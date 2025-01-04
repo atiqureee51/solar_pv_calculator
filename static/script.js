@@ -122,7 +122,12 @@ const TEMPERATURE_MODEL_PARAMETERS = {
 
 // Map initialization
 function initializeMap() {
-    map = L.map('map').setView([23.8103, 90.4125], 13);
+    // Get initial region
+    const initialRegion = $('#region').val();
+    const defaults = getDefaultsForRegion(initialRegion);
+    
+    // Initialize map with correct starting position
+    map = L.map('map').setView([defaults.lat, defaults.lon], defaults.zoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: ' OpenStreetMap contributors',
         maxZoom: 19,
@@ -131,7 +136,7 @@ function initializeMap() {
     }).addTo(map);
 
     // Initialize marker with dragging enabled
-    marker = L.marker([23.8103, 90.4125], {
+    marker = L.marker([defaults.lat, defaults.lon], {
         draggable: true
     }).addTo(map);
 
@@ -185,10 +190,38 @@ function initializeMap() {
     });
 }
 
+// Get default values based on region
+function getDefaultsForRegion(region) {
+    const defaults = {
+        'bangladesh': {
+            lat: 23.8103,
+            lon: 90.4125,
+            zoom: 13
+        },
+        'usa': {
+            lat: 37.0902,
+            lon: -95.7129,
+            zoom: 13
+        },
+        'world': {
+            lat: 0,
+            lon: 0,
+            zoom: 2
+        }
+    };
+    return defaults[region] || defaults['usa'];
+}
+
 // Function to update coordinates in form
 function updateCoordinates(lat, lng) {
     $('#latitude').val(lat.toFixed(6));
     $('#longitude').val(lng.toFixed(6));
+    
+    // Update help text based on current region
+    const region = $('#region').val();
+    const defaults = getDefaultsForRegion(region);
+    $('#latitude').next('.form-text').text(`${region} default: ${defaults.lat}° N`);
+    $('#longitude').next('.form-text').text(`${region} default: ${defaults.lon}° E`);
 }
 
 // Function to update marker position
@@ -388,6 +421,18 @@ function createCashflowChart(canvas) {
 // Initialize everything
 $(document).ready(function() {
     try {
+        // Get initial region before any initialization
+        const initialRegion = $('#region').val();
+        const defaults = getDefaultsForRegion(initialRegion);
+        
+        // Set initial coordinates
+        $('#latitude').val(defaults.lat.toFixed(6));
+        $('#longitude').val(defaults.lon.toFixed(6));
+        
+        // Update help text
+        $('#latitude').next('.form-text').text(`${initialRegion} default: ${defaults.lat}° N`);
+        $('#longitude').next('.form-text').text(`${initialRegion} default: ${defaults.lon}° E`);
+        
         // Make panel fields read-only
         $('#region, #system-size, #currency').prop('readonly', true);
         
@@ -602,11 +647,8 @@ function updateLocationDefaults(region) {
 // Top bar handlers
 function setupTopBarHandlers() {
     // Region handlers
-    $('#top-region-select, #region').change(function() {
+    $('#region').change(function() {
         const newRegion = $(this).val();
-        
-        // Update both selectors
-        $('#region, #top-region-select').val(newRegion);
         
         // Update location and other settings
         const defaults = DEFAULT_VALUES[newRegion];
@@ -615,7 +657,6 @@ function setupTopBarHandlers() {
             $('#longitude').val(defaults.lon);
             $('#system-size').val(defaults.systemSize);
             $('#currency').val(defaults.currency);
-            $('#quick-currency').val(defaults.currency);
             $('#installed_cost').val(defaults.installedCost);
             $('#electricity_rate').val(defaults.electricityRate);
             $('#tilt').val(defaults.tilt);
@@ -630,16 +671,14 @@ function setupTopBarHandlers() {
     });
 
     // Currency handlers
-    $('#top-currency-select, #currency').change(function() {
+    $('#currency').change(function() {
         const newCurrency = $(this).val();
-        $('#currency, #top-currency-select').val(newCurrency);
         updateCurrencyValues(newCurrency);
     });
 
     // Sizing method handlers
-    $('#top-sizing-select, #sizing-method').change(function() {
+    $('#sizing-method').change(function() {
         const method = $(this).val();
-        $('#sizing-method, #top-sizing-select').val(method);
         updateSizingMethod();
     });
 }
@@ -814,20 +853,19 @@ function setupEventListeners() {
 
 function setupQuickAccessControls() {
     // Region change handler
-    $('#quick-region').change(function() {
+    $('#region').change(function() {
         const region = $(this).val();
-        $('#region').val(region).trigger('change');
-        updateLocationDefaults(region);
+        handleRegionChange(region);
     });
 
     // Currency change handler
-    $('#quick-currency').change(function() {
+    $('#currency').change(function() {
         const currency = $(this).val();
-        $('#currency').val(currency).trigger('change');
+        handleCurrencyChange(currency);
     });
 
     // Sizing method change handler
-    $('#quick-sizing-method').change(function() {
+    $('#sizing-method').change(function() {
         const method = $(this).val();
         if (method === 'area') {
             $('#quick-area-group').show();
@@ -836,7 +874,6 @@ function setupQuickAccessControls() {
             $('#quick-area-group').hide();
             $('#quick-system-size').prop('readonly', false);
         }
-        $('#sizing-method').val(method).trigger('change');
         updateSizingMethod();
     });
 
@@ -846,15 +883,15 @@ function setupQuickAccessControls() {
 
     // Sync from collapsible panels to quick access
     $('#region').change(function() {
-        $('#quick-region').val($(this).val());
+        handleRegionChange($(this).val());
     });
 
     $('#currency').change(function() {
-        $('#quick-currency').val($(this).val());
+        handleCurrencyChange($(this).val());
     });
 
     $('#sizing-method').change(function() {
-        $('#quick-sizing-method').val($(this).val());
+        updateSizingMethod();
     });
 
     // Sync from main controls to quick controls
@@ -881,44 +918,23 @@ function setupQuickControls() {
     });
 
     // Region sync
-    $('#quick-region').change(function() {
+    $('#region').change(function() {
         const newRegion = $(this).val();
         
         // Update both selectors
-        $('#region').val(newRegion);
-        
-        // Update location and other settings
-        const defaults = DEFAULT_VALUES[newRegion];
-        if (defaults) {
-            $('#latitude').val(defaults.lat);
-            $('#longitude').val(defaults.lon);
-            $('#system-size').val(defaults.systemSize);
-            $('#currency').val(defaults.currency);
-            $('#quick-currency').val(defaults.currency);
-            $('#installed_cost').val(defaults.installedCost);
-            $('#electricity_rate').val(defaults.electricityRate);
-            $('#tilt').val(defaults.tilt);
-            $('#azimuth').val(defaults.azimuth);
-            
-            // Update map
-            if (map) {
-                map.setView([defaults.lat, defaults.lon], 10);
-                updateMapMarker(defaults.lat, defaults.lon);
-            }
-        }
+        handleRegionChange(newRegion);
     });
 
     // Currency sync
-    $('#quick-currency').change(function() {
+    $('#currency').change(function() {
         const newCurrency = $(this).val();
-        $('#currency').val(newCurrency);
         handleCurrencyChange(newCurrency);
     });
 }
 
 // Update handleRegionChange to accept parameter
 function handleRegionChange(region) {
-    const defaults = DEFAULT_VALUES[region] || DEFAULT_VALUES['bangladesh'];
+    const defaults = DEFAULT_VALUES[region];
     
     // Update location
     $('#latitude').val(defaults.lat);
@@ -926,7 +942,6 @@ function handleRegionChange(region) {
     
     // Update system configuration
     $('#system-size').val(defaults.systemSize);
-    $('#quick-system-size').val(defaults.systemSize);
     $('#tilt').val(defaults.tilt);
     $('#azimuth').val(defaults.azimuth);
     
@@ -936,8 +951,8 @@ function handleRegionChange(region) {
     
     // Update map
     if (map) {
-        map.setView([defaults.lat, defaults.lon], 13);
-        updateMarker([defaults.lat, defaults.lon]);
+        map.setView([defaults.lat, defaults.lon], 10);
+        updateMapMarker(defaults.lat, defaults.lon);
     }
 }
 
@@ -1655,15 +1670,21 @@ $('#currency').change(function() {
     
     // Update installed cost
     const installedCostUSD = $('#installed_cost').data('usd-value');
-    $('#installed_cost').val((installedCostUSD * rate).toFixed(0));
+    if (installedCostUSD) {
+        $('#installed_cost').val((installedCostUSD * rate).toFixed(2));
+    }
     
     // Update maintenance cost
     const maintenanceUSD = $('#maintenance_cost').data('usd-value');
-    $('#maintenance_cost').val((maintenanceUSD * rate).toFixed(0));
+    if (maintenanceUSD) {
+        $('#maintenance_cost').val((maintenanceUSD * rate).toFixed(2));
+    }
     
     // Update electricity rate
     const electricityUSD = $('#electricity_rate').data('usd-value');
-    $('#electricity_rate').val((electricityUSD * rate).toFixed(2));
+    if (electricityUSD) {
+        $('#electricity_rate').val((electricityUSD * rate).toFixed(2));
+    }
 })
 
 // Event listeners for sizing method
@@ -1947,3 +1968,185 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 });
+
+$(document).ready(function() {
+    // Initialize event handlers
+    initializeMap();
+    
+    // Initialize charts
+    initializeCharts();
+    
+    // Initialize collapse sections
+    initializeCollapse();
+    
+    // Initialize sizing method handler
+    $('#sizing-method').change(handleSizingMethodChange);
+    handleSizingMethodChange(); // Set initial state
+    
+    // Handle region change
+    $('#region').change(function() {
+        const newRegion = $(this).val();
+        handleRegionChange(newRegion);
+    });
+    
+    // Handle currency change
+    $('#currency').change(function() {
+        const newCurrency = $(this).val();
+        handleCurrencyChange(newCurrency);
+    });
+    
+    // Handle system size input
+    $('#system-size').on('input', function() {
+        if ($('#sizing-method').val() === 'system-size') {
+            const systemSize = parseFloat($(this).val());
+            if (!isNaN(systemSize)) {
+                const moduleArea = 2.0;  // m²
+                const gcr = parseFloat($('#gcr').val()) || 0.4;
+                const area = (systemSize * 1000 / 400) * moduleArea / gcr;
+                $('#area').val(area.toFixed(2));
+            }
+        }
+    });
+    
+    // Initialize with default values
+    handleRegionChange($('#region').val());
+    handleCurrencyChange($('#currency').val());
+});
+
+function handleRegionChange(region) {
+    // Update map view based on region
+    switch(region) {
+        case 'bangladesh':
+            map.setView([23.8103, 90.4125], 13);
+            $('#latitude').val('23.8103');
+            $('#longitude').val('90.4125');
+            break;
+        case 'usa':
+            map.setView([37.0902, -95.7129], 13);
+            $('#latitude').val('37.0902');
+            $('#longitude').val('-95.7129');
+            break;
+        case 'world':
+            map.setView([0, 0], 2);
+            $('#latitude').val('0');
+            $('#longitude').val('0');
+            break;
+    }
+    
+    // Update marker position
+    const lat = parseFloat($('#latitude').val());
+    const lng = parseFloat($('#longitude').val());
+    updateMarker([lat, lng]);
+}
+
+// Currency handling
+function handleCurrencyChange(currency) {
+    const rate = currency === 'BDT' ? 110 : 1; // BDT to USD rate
+    
+    // Update all cost components
+    $('.cost-component').each(function() {
+        const baseValue = $(this).data('base-value') || $(this).val();
+        $(this).data('base-value', baseValue);
+        $(this).val((baseValue * rate).toFixed(2));
+    });
+    
+    // Update main financial inputs
+    const fields = ['#installed_cost', '#maintenance_cost', '#electricity_rate'];
+    fields.forEach(field => {
+        const baseValue = $(field).data('base-value') || $(field).val();
+        $(field).data('base-value', baseValue);
+        $(field).val((baseValue * rate).toFixed(2));
+    });
+    
+    // Update currency symbols in the UI
+    const symbol = currency === 'BDT' ? '৳' : '$';
+    $('.currency-symbol').text(symbol);
+}
+
+// Document ready handler
+$(document).ready(function() {
+    // Get initial region and defaults
+    const initialRegion = $('#region').val();
+    const defaults = getDefaultsForRegion(initialRegion);
+    
+    // Set initial coordinates
+    $('#latitude').val(defaults.lat.toFixed(6));
+    $('#longitude').val(defaults.lon.toFixed(6));
+    
+    // Initialize components with correct defaults
+    initializeMap();
+    initializeCharts();
+    initializeCollapse();
+    
+    // Set up event handlers
+    $('#region').change(function() {
+        const region = $(this).val();
+        const defaults = getDefaultsForRegion(region);
+        
+        // Update map and marker
+        if (map) {
+            map.setView([defaults.lat, defaults.lon], defaults.zoom);
+            marker.setLatLng([defaults.lat, defaults.lon]);
+        }
+        
+        // Update form values
+        $('#latitude').val(defaults.lat.toFixed(6));
+        $('#longitude').val(defaults.lon.toFixed(6));
+    });
+    
+    $('#currency').change(function() {
+        handleCurrencyChange($(this).val());
+    });
+    
+    // Initialize sizing method
+    $('#sizing-method').change(handleSizingMethodChange);
+    handleSizingMethodChange();
+    
+    // Trigger initial handlers
+    handleRegionChange(initialRegion);
+    handleCurrencyChange($('#currency').val());
+});
+
+// Get default values based on region
+function getDefaultsForRegion(region) {
+    const defaults = {
+        'bangladesh': {
+            lat: 23.8103,
+            lon: 90.4125,
+            zoom: 13
+        },
+        'usa': {
+            lat: 37.0902,
+            lon: -95.7129,
+            zoom: 13
+        },
+        'world': {
+            lat: 0,
+            lon: 0,
+            zoom: 2
+        }
+    };
+    return defaults[region] || defaults['usa'];
+}
+
+// Handle region change
+function handleRegionChange(region) {
+    const defaults = getDefaultsForRegion(region);
+    
+    // Update map view and marker
+    if (map) {
+        map.setView([defaults.lat, defaults.lon], defaults.zoom);
+        marker.setLatLng([defaults.lat, defaults.lon]);
+    }
+    
+    // Update form values
+    $('#latitude').val(defaults.lat.toFixed(6));
+    $('#longitude').val(defaults.lon.toFixed(6));
+    
+    // Update currency if needed
+    if (region === 'bangladesh' && $('#currency').val() !== 'BDT') {
+        $('#currency').val('BDT').trigger('change');
+    } else if (region === 'usa' && $('#currency').val() !== 'USD') {
+        $('#currency').val('USD').trigger('change');
+    }
+}
