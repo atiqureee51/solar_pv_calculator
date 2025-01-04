@@ -35,8 +35,8 @@ const DEFAULT_VALUES = {
         azimuth: 180
     },
     usa: {
-        lat: 37.0902,
-        lon: -95.7129,
+        lat: 30.2241,
+        lon: -92.0198,
         systemSize: 5,
         currency: 'USD',
         installedCost: 3000,
@@ -50,8 +50,9 @@ const DEFAULT_VALUES = {
         azimuth: 180
     },
     world: {
-        lat: 30.2241,
-        lon: -92.0198,
+
+        lat: 37.0902,
+        lon: -95.7129,
         systemSize: 5,
         currency: 'USD',
         installedCost: 1000,
@@ -72,12 +73,12 @@ const LOCATION_DEFAULTS = {
         lon: 90.4125,
         name: "Dhaka, Bangladesh"
     },
-    usa: {
+    world: {
         lat: 37.0902,
         lon: -95.7129,
         name: "USA"
     },
-    world: {
+    usa: {
         lat: 30.2241,
         lon: -92.0198,
         name: "Lafayette, LA, USA"
@@ -196,17 +197,18 @@ function getDefaultsForRegion(region) {
         'bangladesh': {
             lat: 23.8103,
             lon: 90.4125,
-            zoom: 13
+            zoom: 3
         },
         'usa': {
-            lat: 37.0902,
-            lon: -95.7129,
-            zoom: 13
+
+            lat: 30.2241,
+            lon: -92.0198,
+            zoom: 3
         },
         'world': {
-            lat: 0,
-            lon: 0,
-            zoom: 2
+            lat: 37.0902,
+            lon: -95.7129,
+            zoom: 6
         }
     };
     return defaults[region] || defaults['usa'];
@@ -2017,19 +2019,21 @@ function handleRegionChange(region) {
     // Update map view based on region
     switch(region) {
         case 'bangladesh':
-            map.setView([23.8103, 90.4125], 13);
+            map.setView([23.8103, 90.4125], 3);
             $('#latitude').val('23.8103');
             $('#longitude').val('90.4125');
             break;
         case 'usa':
-            map.setView([37.0902, -95.7129], 13);
-            $('#latitude').val('37.0902');
-            $('#longitude').val('-95.7129');
-            break;
-        case 'world':
-            map.setView([0, 0], 2);
+
+            map.setView([30.2241, -92.0198], 3);
             $('#latitude').val('0');
             $('#longitude').val('0');
+            break;
+        case 'world':
+            map.setView([37.0902, -95.7129], 6);
+            $('#latitude').val('37.0902');
+            $('#longitude').val('-95.7129');
+
             break;
     }
     
@@ -2107,27 +2111,7 @@ $(document).ready(function() {
     handleCurrencyChange($('#currency').val());
 });
 
-// Get default values based on region
-function getDefaultsForRegion(region) {
-    const defaults = {
-        'bangladesh': {
-            lat: 23.8103,
-            lon: 90.4125,
-            zoom: 13
-        },
-        'usa': {
-            lat: 37.0902,
-            lon: -95.7129,
-            zoom: 13
-        },
-        'world': {
-            lat: 0,
-            lon: 0,
-            zoom: 2
-        }
-    };
-    return defaults[region] || defaults['usa'];
-}
+
 
 // Handle region change
 function handleRegionChange(region) {
