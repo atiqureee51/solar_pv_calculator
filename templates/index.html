@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- Content Security Policy (CSP) might require inline modifications, so keep your meta if needed. -->
+  
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; 
                  script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com blob:; 
@@ -20,11 +20,11 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
   
-  <!-- Your custom style (or use the style.css you provided) -->
+  
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   
   <style>
-    /* Just a small example if you need an inline override for the map container */
+    
     #map {
       height: 400px;
       width: 100%;
@@ -52,14 +52,14 @@
           <!-- Quick Access Controls -->
           <div class="card mb-3">
             <div class="card-body">
-              <select class="form-select mb-2" id="quick-region">
+              <select class="form-select mb-2" id="region">
                 <option value="bangladesh" >🇧🇩 Bangladesh</option>
                 <option value="usa" selected>🇺🇸 USA</option>
                 <option value="world">🌍 World</option>
               </select>
-              <select class="form-select" id="quick-currency">
+              <select class="form-select" id="currency">
                 <option value="BDT" >BDT (৳)</option>
-                <option value="USD" selected>USD ($)</option>
+                <option value="USD"selected >USD ($)</option>
               </select>
             </div>
           </div>
@@ -76,22 +76,14 @@
             <div id="locationSection" class="collapse">
               <div class="card-body">
                 <div class="form-group">
-                    <label for="region">Region</label>
-                    <select class="form-control" id="region" name="region" disabled>
-                        <option value="bangladesh" >Bangladesh</option>
-                        <option value="usa" selected>USA</option>
-                        <option value="world">World</option>
-                    </select>
-                </div>
-                <div class="form-group">
                     <label for="latitude">Latitude</label>
                     <input type="number" class="form-control" id="latitude" name="latitude" step="0.000001" required>
-                    <small class="form-text text-muted">Bangladesh default: 23.8103° N</small>
+                    <small class="form-text text-muted"> Change latitude</small>
                 </div>
                 <div class="form-group">
                     <label for="longitude">Longitude</label>
                     <input type="number" class="form-control" id="longitude" name="longitude" step="0.000001" required>
-                    <small class="form-text text-muted">Bangladesh default: 90.4125° E</small>
+                    <small class="form-text text-muted"> Change longitude</small>
                 </div>
               </div>
             </div>
@@ -238,13 +230,7 @@
             </div>
             <div id="financialSection" class="collapse">
               <div class="card-body">
-                <div class="form-group">
-                  <label for="currency">Currency</label>
-                  <select class="form-control" id="currency" name="currency" disabled>
-                    <option value="BDT">BDT (৳)</option>
-                    <option value="USD">USD ($)</option>
-                  </select>
-                </div>
+
                 <div class="form-group">
                   <label for="installed_cost">Installed Cost</label>
                   <div class="input-group">
