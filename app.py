@@ -17,7 +17,7 @@ from utils import *
 from config import NREL_API_KEY, EMAIL
 from geopy.geocoders import Nominatim
 import io
-
+import os
 app = Flask(__name__)
 
 
