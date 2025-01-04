@@ -20,6 +20,8 @@ import io
 
 app = Flask(__name__)
 
+
+
 # Constants (same as before)
 TEMPERATURE_MODEL_PARAMETERS = {
     'sapm': {
@@ -1029,5 +1031,6 @@ def get_weather_data_route():
 def get_api_config():
     return jsonify({'success':True,'api_key':NREL_API_KEY,'email':EMAIL})
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
