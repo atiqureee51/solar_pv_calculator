@@ -1,0 +1,473 @@
+/* Main Layout */
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.container-fluid {
+    padding: 20px;
+}
+
+/* Cards */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.card-title {
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Dashboard Cards */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-title {
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.card h3 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+/* System Analysis Dashboard */
+.metric {
+    text-align: center;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.metric h6 {
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.metric p {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #212529;
+}
+
+/* Dashboard Cards */
+.bg-primary {
+    background: linear-gradient(45deg, #4e73df, #224abe) !important;
+}
+
+.bg-success {
+    background: linear-gradient(45deg, #1cc88a, #13855c) !important;
+}
+
+.bg-info {
+    background: linear-gradient(45deg, #36b9cc, #258391) !important;
+}
+
+.bg-warning {
+    background: linear-gradient(45deg, #f6c23e, #dda20a) !important;
+}
+
+/* Tabs */
+.nav-tabs {
+    border-bottom: 2px solid #e3e6f0;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    color: #858796;
+    font-weight: 500;
+    padding: 12px 20px;
+}
+
+.nav-tabs .nav-link.active {
+    color: #4e73df;
+    border-bottom: 2px solid #4e73df;
+    background: none;
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
+.table td:first-child {
+    font-weight: 500;
+    color: #5a5c69;
+}
+
+/* Charts */
+canvas {
+    max-width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Form Elements */
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #d1d3e2;
+    padding: 10px;
+}
+
+.form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78,115,223,0.25);
+}
+
+/* Buttons */
+.btn {
+    border-radius: 5px;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #4e73df, #224abe);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #224abe, #1a3a97);
+}
+
+/* Map */
+#map {
+    height: 400px;
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading Spinner */
+#loading-spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .card {
+        margin-bottom: 15px;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 8px 12px;
+    }
+    
+    #map {
+        height: 300px;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Header styles */
+.header-section {
+    text-align: center;
+    padding: 2rem 0;
+    background-color: #343a40;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.main-title {
+    color: #495057;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Dashboard styles */
+.dashboard-summary {
+    margin: 2rem 0;
+}
+
+.dashboard-row {
+    margin-bottom: 2rem;
+}
+
+.dashboard-card {
+    background: linear-gradient(135deg, #343a40, #4a515b);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    height: 100%;
+    transition: transform 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-5px);
+}
+
+.dashboard-card h3 {
+    font-size: 1.5rem;
+    margin: 0;
+}
+
+.dashboard-card p {
+    margin: 0;
+    opacity: 0.8;
+}
+
+.dashboard-card .card-body {
+    padding: 1.25rem;
+}
+
+/* Chart containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.tab-pane .chart-container {
+    margin-bottom: 0;
+}
+
+/* Dashboard cards at top */
+.dashboard-summary {
+    margin-bottom: 2rem;
+}
+
+.dashboard-summary .card {
+    background: #1a237e;
+    color: white;
+    border: none;
+    height: 100%;
+}
+
+.dashboard-summary .card-body {
+    padding: 1.5rem;
+}
+
+.dashboard-summary h3 {
+    font-size: 2rem;
+    margin: 0.5rem 0;
+}
+
+.dashboard-summary .card-title {
+    opacity: 0.8;
+    font-size: 1rem;
+}
+
+/* Tab content */
+.tab-content {
+    padding: 20px;
+}
+
+.tab-pane {
+    min-height: 500px;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+/* Content section styles */
+.content-section {
+    background-color: #343a40;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    color: #495057;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-description {
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}
+
+/* Results section styles */
+.visualization-card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.visualization-card h4 {
+    color: #343a40;
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #007bff;
+}
+
+/* Metric cards in results */
+.metric-card {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.metric-card h5 {
+    color: #343a40;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.metric-card .label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.metric-card .value {
+    color: #343a40;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* System specifications styling */
+#system-specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+#system-specs .spec-item {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#system-specs .spec-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+#system-specs .spec-value {
+    color: #343a40;
+    font-weight: 500;
+}
+
+/* Results area */
+#results-area {
+    margin-top: 2rem;
+}
+
+#results-area .alert {
+    margin-bottom: 0;
+}
+
+/* Production tab charts */
+#production .row {
+    margin-top: 2rem;
+}
+
+#production canvas {
+    max-height: 400px;
+}
+
+/* Toast notifications */
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+.toast {
+    padding: 15px 20px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    color: white;
+    animation: slideIn 0.3s ease-out;
+}
+
+.toast.success {
+    background-color: #28a745;
+}
+
+.toast.error {
+    background-color: #dc3545;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+}
