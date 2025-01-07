@@ -197,13 +197,13 @@ function getDefaultsForRegion(region) {
         'bangladesh': {
             lat: 23.8103,
             lon: 90.4125,
-            zoom: 3
+            zoom: 12
         },
         'usa': {
 
             lat: 30.2241,
             lon: -92.0198,
-            zoom: 3
+            zoom: 12
         },
         'world': {
             lat: 37.0902,
@@ -442,14 +442,52 @@ $(document).ready(function() {
         initializeForm();
         setupQuickControls();
         setupEventListeners();
+
         
-        // Initialize map
+        // Initialize components with correct defaults
         initializeMap();
-        
-        // Initialize charts and modules
         initializeCharts();
+        //initializeCollapse();
         loadModulesAndInverters();
+
+        $('#region').change(function() {
+            const region = $(this).val();
+            const defaults = getDefaultsForRegion(region);
+            
+            // Update map and marker
+            if (map) {
+                map.setView([defaults.lat, defaults.lon], defaults.zoom);
+                marker.setLatLng([defaults.lat, defaults.lon]);
+            }
+            
+            // Update form values
+            $('#latitude').val(defaults.lat.toFixed(6));
+            $('#longitude').val(defaults.lon.toFixed(6));
+        });
         
+        $('#currency').change(function() {
+            handleCurrencyChange($(this).val());
+        });
+        
+        // Initialize sizing method
+        $('#sizing-method').change(handleSizingMethodChange);
+        handleSizingMethodChange();
+        // Handle system size input
+        $('#system-size').on('input', function() {
+                if ($('#sizing-method').val() === 'system-size') {
+                    const systemSize = parseFloat($(this).val());
+                    if (!isNaN(systemSize)) {
+                        const moduleArea = 2.0;  // m²
+                        const gcr = parseFloat($('#gcr').val()) || 0.4;
+                        const area = (systemSize * 1000 / 400) * moduleArea / gcr;
+                        $('#area').val(area.toFixed(2));
+                    }
+                }
+        });
+        // Trigger initial handlers
+        handleRegionChange($('#region').val());
+        handleCurrencyChange($('#currency').val());
+
         // Show initial status
         $('#status-message')
             .removeClass('d-none alert-danger')
@@ -473,6 +511,12 @@ $(document).ready(function() {
         showError('Failed to initialize the application. Please refresh the page.');
     }
 });
+
+
+
+
+
+
 
 // Event listeners
 function setupEventListeners() {
@@ -666,7 +710,7 @@ function setupTopBarHandlers() {
             
             // Update map
             if (map) {
-                map.setView([defaults.lat, defaults.lon], 10);
+                map.setView([defaults.lat, defaults.lon], 5);
                 updateMapMarker(defaults.lat, defaults.lon);
             }
         }
@@ -934,33 +978,16 @@ function setupQuickControls() {
     });
 }
 
-// Update handleRegionChange to accept parameter
-function handleRegionChange(region) {
-    const defaults = DEFAULT_VALUES[region];
-    
-    // Update location
-    $('#latitude').val(defaults.lat);
-    $('#longitude').val(defaults.lon);
-    
-    // Update system configuration
-    $('#system-size').val(defaults.systemSize);
-    $('#tilt').val(defaults.tilt);
-    $('#azimuth').val(defaults.azimuth);
-    
-    // Update financial parameters
-    $('#installed_cost').val(defaults.installedCost);
-    $('#electricity_rate').val(defaults.electricityRate);
-    
-    // Update map
-    if (map) {
-        map.setView([defaults.lat, defaults.lon], 10);
-        updateMapMarker(defaults.lat, defaults.lon);
-    }
-}
+
+
+
+
+
 
 // Currency handling
 function handleCurrencyChange(currency) {
     const rate = (currency === 'BDT') ? 110 : 1/110; // BDT to USD rate
+    //const rate = currency === 'BDT' ? 110 : 1; // BDT to USD rate
     
     // Update all cost components
     $('.cost-component').each(function() {
@@ -981,6 +1008,13 @@ function handleCurrencyChange(currency) {
     const symbol = currency === 'BDT' ? '৳' : '$';
     $('.currency-symbol').text(symbol);
 }
+
+
+
+
+
+
+
 
 // Drawing
 function handleDrawCreated(e) {
@@ -1170,28 +1204,25 @@ async function handleFormSubmit(event) {
 
         console.log('Server Response:', response);
 
-        if (response.success) {
-            // Update sizing status if available
-            if (response.sizing_status) {
-                const statusDiv = document.getElementById('sizingStatus');
-                const statusClass = response.sizing_status.status === 'ok' ? 'text-success' : 
-                                  response.sizing_status.status === 'oversized' ? 'text-warning' : 'text-danger';
-                statusDiv.innerHTML = `<div class="${statusClass}">${response.sizing_status.message}</div>`;
-            }
-            
-            updateResults(response);
-            showSuccess('Calculation completed successfully!');
+        // Update sizing status if available
+        if (response.sizing_status && response.sizing_status.status) {
+            const statusClass = response.sizing_status.status === 'ok' ? 'text-success' : 
+                              response.sizing_status.status === 'oversized' ? 'text-warning' : 'text-danger';
+            $('#sizingStatus').html(`<div class="${statusClass}">${response.sizing_status.message}</div>`);
         } else {
-            showError(response.error || 'Calculation failed');
+            $('#sizingStatus').html('');
         }
+        
+        updateResults(response);
+        showSuccess('Calculation completed successfully!');
     } catch (error) {
-        console.error('Error details:', {
-            error,
-            responseText: error.responseText,
-            status: error.status,
-            statusText: error.statusText
-        });
-        showError(error.responseJSON?.error || 'Server error occurred');
+        console.error('Error details:', error);
+        const errorMessage = error.responseJSON?.error || 'Server error occurred';
+        showError(errorMessage);
+        const statusDiv = document.getElementById('sizingStatus');
+        if (statusDiv) {
+            statusDiv.innerHTML = `<div class="text-danger">${errorMessage}</div>`;
+        }
     } finally {
         hideLoading();
     }
@@ -1270,10 +1301,18 @@ $('#calculateBtn').click(function(e) {
 // Updating Results
 function updateResults(response) {
     console.log("Updating results with:", response);
-    const { system_analysis, financial_metrics, weather_data, location_info } = response;
+    const { system_analysis, financial_metrics, weather_data, location_info, sizing_status } = response;
     const currency = $('#currency').val();
     const symbol = currency === 'BDT' ? '৳' : '$';
 
+    // Add a new line to show "sizing_status" in the UI if desired:
+    if (sizing_status && sizing_status.status) {
+        const statusClass = sizing_status.status === 'ok' ? 'text-success' : 
+                          sizing_status.status === 'oversized' ? 'text-warning' : 'text-danger';
+        $('#sizingStatus').html(`<div class="${statusClass}">${sizing_status.message}</div>`);
+    } else {
+        $('#sizingStatus').html('');
+    }
     // Update system performance metrics with units
     $('#peak-dc').text(`${system_analysis.peak_dc_power.toFixed(2)} kW`);
     $('#peak-ac').text(`${system_analysis.peak_ac_power.toFixed(2)} kW`);
@@ -1287,7 +1326,9 @@ function updateResults(response) {
     $('#cost-savings').text(symbol + financial_metrics.annual_savings.toFixed(0));
     $('#payback-period').text(financial_metrics.simple_payback.toFixed(1) + ' yrs');
     $('#co2-savings').text(financial_metrics.co2_savings.toFixed(1) + ' tons');
-
+    //  existing usage:
+    // 
+    $('#number-of-inverters').text(system_analysis.number_of_inverters);
     //----------------------------------------------
     // Second Dashboard: under the map
     //----------------------------------------------
@@ -1301,7 +1342,7 @@ function updateResults(response) {
     // We'll display the final DC rating as "peak_dc_power" from system_analysis, 
     // but you could also use the user input if you prefer.
     const systemSizeKW = system_analysis.peak_dc_power; 
-    $('#system-size-display').text(`${systemSizeKW.toFixed(2)} kW`);
+    //$('#system-size').text(`${systemSizeKW.toFixed(2)} kW`);
 
     // 3) LCOE:
     const lcoeVal = financial_metrics.lcoe;
@@ -1327,9 +1368,30 @@ function updateResults(response) {
     const lat = $('#latitude').val();
     const lon = $('#longitude').val();
     $('#site-location').text(`${lat}, ${lon}`);
-    $('#site-city').text(response.location_info?.city || '-');
-    $('#site-country').text(response.location_info?.country || '-');
+    $('#site-city').text(location_info.city || '-');
+    $('#site-country').text(location_info.country || '-');
     
+
+    const desiredSystemSize = parseFloat($('#system-size').val());
+    let statusMessage = 'Calculation completed successfully!';
+    let statusClass = 'alert-success';
+    
+    if (Math.abs(desiredSystemSize - systemSizeKW) > 1) { // If difference is more than 1 kW
+        if (systemSizeKW < desiredSystemSize) {
+            statusMessage = `Warning: System size reduced to ${systemSizeKW.toFixed(2)} kW due to inverter limitations. Consider using a larger inverter.`;
+            statusClass = 'alert-warning';
+        } else if (systemSizeKW > desiredSystemSize) {
+            statusMessage = `Warning: System size increased to ${systemSizeKW.toFixed(2)} kW due to inverter configuration. Consider adjusting the design.`;
+            statusClass = 'alert-warning';
+        }
+    }
+
+    $('#status-message')
+        .removeClass('d-none alert-primary alert-success alert-warning alert-danger')
+        .addClass(statusClass)
+        .text(statusMessage);
+
+    $('#system-size-display').text(`${systemSizeKW.toFixed(2)} kW`);
     // Calculate averages from monthly/hourly data
     const monthlyGHI = weather_data.monthly_ghi || [];
     const monthlyTemp = weather_data.monthly_temperature || [];
@@ -1344,8 +1406,7 @@ function updateResults(response) {
     $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
 
     // ---------- System Performance -----------
-    $('#peak-dc-power').text(`${system_analysis.peak_dc_power.toFixed(2)} kW`);
-    $('#peak-ac-power').text(`${system_analysis.peak_ac_power.toFixed(2)} kW`);
+
     $('#annual-production').text(`${(system_analysis.annual_energy/1000).toFixed(2)} MWh`);
     
     // Display Specific Yield (kWh/kWp)
@@ -1363,8 +1424,7 @@ function updateResults(response) {
     // ---------- Energy Production -----
     // annual_energy is kWh
     $('#annual-energy').text((system_analysis.annual_energy / 1000).toFixed(2)); // MWh
-    $('#peak-dc-power').text(system_analysis.peak_dc_power.toFixed(2));
-    $('#peak-ac-power').text(system_analysis.peak_ac_power.toFixed(2));
+
     $('#performance-ratio').text((system_analysis.performance_ratio * 100).toFixed(2));
     $('#capacity-factor').text((system_analysis.capacity_factor * 100).toFixed(2));
 
@@ -1648,7 +1708,7 @@ function showSuccess(message) {
         .attr('role', 'alert')
         .html(`
             ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" ></button>
         `);
     $('#alerts').empty().append(alertDiv);
     setTimeout(() => {
@@ -1969,148 +2029,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showError('Failed to load inverter details');
             });
     };
-});
-
-$(document).ready(function() {
-    // Initialize event handlers
-    initializeMap();
-    
-    // Initialize charts
-    initializeCharts();
-    
-    // Initialize collapse sections
-    initializeCollapse();
-    
-    // Initialize sizing method handler
-    $('#sizing-method').change(handleSizingMethodChange);
-    handleSizingMethodChange(); // Set initial state
-    
-    // Handle region change
-    $('#region').change(function() {
-        const newRegion = $(this).val();
-        handleRegionChange(newRegion);
-    });
-    
-    // Handle currency change
-    $('#currency').change(function() {
-        const newCurrency = $(this).val();
-        handleCurrencyChange(newCurrency);
-    });
-    
-    // Handle system size input
-    $('#system-size').on('input', function() {
-        if ($('#sizing-method').val() === 'system-size') {
-            const systemSize = parseFloat($(this).val());
-            if (!isNaN(systemSize)) {
-                const moduleArea = 2.0;  // m²
-                const gcr = parseFloat($('#gcr').val()) || 0.4;
-                const area = (systemSize * 1000 / 400) * moduleArea / gcr;
-                $('#area').val(area.toFixed(2));
-            }
-        }
-    });
-    
-    // Initialize with default values
-    handleRegionChange($('#region').val());
-    handleCurrencyChange($('#currency').val());
-});
-
-function handleRegionChange(region) {
-    // Update map view based on region
-    switch(region) {
-        case 'bangladesh':
-            map.setView([23.8103, 90.4125], 3);
-            $('#latitude').val('23.8103');
-            $('#longitude').val('90.4125');
-            break;
-        case 'usa':
-
-            map.setView([30.2241, -92.0198], 3);
-            $('#latitude').val('0');
-            $('#longitude').val('0');
-            break;
-        case 'world':
-            map.setView([37.0902, -95.7129], 6);
-            $('#latitude').val('37.0902');
-            $('#longitude').val('-95.7129');
-
-            break;
-    }
-    
-    // Update marker position
-    const lat = parseFloat($('#latitude').val());
-    const lng = parseFloat($('#longitude').val());
-    updateMarker([lat, lng]);
-}
-
-// Currency handling
-function handleCurrencyChange(currency) {
-    const rate = currency === 'BDT' ? 110 : 1; // BDT to USD rate
-    
-    // Update all cost components
-    $('.cost-component').each(function() {
-        const baseValue = $(this).data('base-value') || $(this).val();
-        $(this).data('base-value', baseValue);
-        $(this).val((baseValue * rate).toFixed(2));
-    });
-    
-    // Update main financial inputs
-    const fields = ['#installed_cost', '#maintenance_cost', '#electricity_rate'];
-    fields.forEach(field => {
-        const baseValue = $(field).data('base-value') || $(field).val();
-        $(field).data('base-value', baseValue);
-        $(field).val((baseValue * rate).toFixed(2));
-    });
-    
-    // Update currency symbols in the UI
-    const symbol = currency === 'BDT' ? '৳' : '$';
-    $('.currency-symbol').text(symbol);
-}
-
-// Document ready handler
-$(document).ready(function() {
-    // Get initial region and defaults
-    const initialRegion = $('#region').val();
-    const defaults = getDefaultsForRegion(initialRegion);
-    
-    // Set initial coordinates
-    $('#latitude').val(defaults.lat.toFixed(6));
-    $('#longitude').val(defaults.lon.toFixed(6));
-    
-    // Initialize components with correct defaults
-    initializeMap();
-    initializeCharts();
-    initializeCollapse();
-    
-    // Set up event handlers
-    $('#region').change(function() {
-        const region = $(this).val();
-        const defaults = getDefaultsForRegion(region);
-        
-        // Update map and marker
-        if (map) {
-            map.setView([defaults.lat, defaults.lon], defaults.zoom);
-            marker.setLatLng([defaults.lat, defaults.lon]);
-        }
-        
-        // Update form values
-        $('#latitude').val(defaults.lat.toFixed(6));
-        $('#longitude').val(defaults.lon.toFixed(6));
-    });
-    
-    $('#currency').change(function() {
-        handleCurrencyChange($(this).val());
-    });
-    
-    // Initialize sizing method
-    $('#sizing-method').change(handleSizingMethodChange);
-    handleSizingMethodChange();
-    
-    // Trigger initial handlers
-    handleRegionChange(initialRegion);
-    handleCurrencyChange($('#currency').val());
-});
-
+})
 
 
 // Handle region change
