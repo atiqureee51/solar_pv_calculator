@@ -17,10 +17,13 @@ from utils import *
 from config import NREL_API_KEY, EMAIL
 from geopy.geocoders import Nominatim
 import io
-import os
+
+
+
+
+
+
 app = Flask(__name__)
-
-
 
 # Constants (same as before)
 TEMPERATURE_MODEL_PARAMETERS = {
@@ -406,7 +409,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             time=weather.index,
             latitude=latitude,
             longitude=longitude,
-            altitude=0,
+            altitude=13,
             temperature=weather['air_temperature']
         )
         print("Solar position calculated")
@@ -500,8 +503,8 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         peak_dc = dc_annual_series.max()
         
         annual_energy_kwh = float(annual_energy_mwh*1000)
-        peak_ac_kW = float(peak_ac/1000)
-        peak_dc_kW = float(peak_dc/1000)
+        peak_ac_kW = float((peak_ac/1000)*num_inverters)
+        peak_dc_kW = float((peak_dc/1000)*num_inverters)
 
         # Calculate performance metrics as before...
         poa_wh_m2=(env_data['poa_global'])
@@ -758,37 +761,73 @@ def get_inverter_details(inverter_name):
         print(f"Error getting inverter details: {str(e)}")
     return None
 
+
+
 def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
-    """Check if module and inverter combination is suitable for system size"""
+    """
+    Check if the module-inverter pair can handle the desired system size.
+    PV System Design Logic:
+    1. Calculate inverters needed based on DC rating
+    2. Check if total DC capacity would be too much above desired size
+    3. Warn if configuration would require significantly more modules/space than desired
+    """
     try:
         mod_db = pvsystem.retrieve_sam('SandiaMod')
         inv_db = pvsystem.retrieve_sam('SandiaInverter')
-        
-        if module_name not in mod_db.columns or inverter_name not in inv_db.columns:
-            return None
+        if module_name not in mod_db.columns:
+            return {"status":"error","message":f"Module {module_name} not found"}
+        if inverter_name not in inv_db.columns:
+            return {"status":"error","message":f"Inverter {inverter_name} not found"}
             
         module = mod_db[module_name]
         inverter = inv_db[inverter_name]
         
-        # Calculate key parameters
-        module_power = float(module['Vmpo'] * module['Impo'])  # W
-        inverter_power = float(inverter['Paco'])  # W
-        system_power = system_size_kw * 1000  # W
+        # Get inverter specs
+        ac_rating_w = float(inverter['Paco'])  # AC output rating
+        dc_rating_w = float(inverter['Pdco'])  # DC input rating
+        desired_dc_w = system_size_kw * 1000
         
-        # Calculate number of inverters needed
-        num_inverters = math.ceil(system_power / inverter_power)
+        # Check if system size is appropriate for this inverter
+        if desired_dc_w < 0.4 * ac_rating_w:
+            return {
+                "status": "warning",
+                "message": f"System size {system_size_kw}kW is too small for {inverter_name} ({ac_rating_w/1000:.1f}kW). Consider using a smaller inverter."
+            }
+            
+        # Calculate number of inverters needed based on DC rating
+        inverter_ratio = desired_dc_w / dc_rating_w
+        num_inverters = math.ceil(inverter_ratio)
         
-        # Check if inverter is appropriately sized
-        if inverter_power > system_power * 1.3:
-            return {"status": "oversized", "message": f"Inverter is oversized. Consider using a smaller inverter for {system_size_kw}kW system."}
-        elif inverter_power * num_inverters < system_power * 0.8:
-            return {"status": "undersized", "message": f"Inverter is undersized. Need {num_inverters} inverters for {system_size_kw}kW system."}
+        # Calculate system capacities with this many inverters
+        total_ac_capacity = num_inverters * ac_rating_w
+        total_dc_capacity = num_inverters * dc_rating_w
         
-        return {"status": "ok", "message": f"Sizing is appropriate. Using {num_inverters} inverter(s)."}
+        print(f"\nDEBUG check_sizing:")
+        print(f"Desired DC: {system_size_kw}kW ({desired_dc_w}W)")
+        print(f"Inverter AC: {ac_rating_w}W, DC: {dc_rating_w}W")
+        print(f"Inverters needed: {inverter_ratio:.2f} → {num_inverters}")
+        print(f"Total AC capacity: {total_ac_capacity/1000:.1f}kW")
+        print(f"Total DC capacity: {total_dc_capacity/1000:.1f}kW")
         
+        # Check if configuration makes sense
+        if total_dc_capacity > desired_dc_w * 1.15:  # Allow 15% overhead
+            return {
+                "status": "warning",
+                "message": f"Using {num_inverters} inverters would require {total_dc_capacity/1000:.1f}kW DC capacity, {((total_dc_capacity/desired_dc_w)-1)*100:.0f}% more than desired {system_size_kw}kW. Consider a larger inverter to reduce space requirements."
+            }
+        elif inverter_ratio > 1.5:
+            return {
+                "status": "warning",
+                "message": f"Desired {system_size_kw}kW is too large for {inverter_name} ({dc_rating_w/1000:.1f}kW DC). Would need {math.ceil(inverter_ratio)} inverters. Consider a larger inverter."
+            }
+        else:
+            return {
+                "status": "ok",
+                "message": f"System works well with {num_inverters} x {inverter_name}. Each inverter: {ac_rating_w/1000:.1f}kW AC, {dc_rating_w/1000:.1f}kW DC. Total capacity needed: {desired_dc_w/1000:.1f}kW."
+            }
+            
     except Exception as e:
-        print(f"Error checking sizing: {str(e)}")
-        return None
+        return {"status":"error","message":f"Error checking sizing: {str(e)}"}
 
 @app.route('/api/get_module_details', methods=['GET'])
 def module_details_route():
@@ -848,8 +887,13 @@ def calculate():
         
         # Check sizing compatibility
         sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
-        if not sizing_check or sizing_check['status'] == 'error':
-            return jsonify({"error": "Invalid system sizing"}), 400
+        if not sizing_check:
+            return jsonify({"success": False, "error": "Could not check sizing"}), 400
+        if sizing_check['status'] == 'error':
+            return jsonify({"success": False, "error": sizing_check['message']}), 400
+            
+        # Store sizing status for response
+        sizing_status = sizing_check
             
         # temperature model
         temp_model = data.get('temp_model','sapm')
@@ -882,26 +926,49 @@ def calculate():
             gcr=gcr
         )
         
-        # Add land cost to cost breakdown
-        if 'cost_breakdown' in performance_data:
-            performance_data['cost_breakdown']['Land Cost'] = land_cost
-            # Recalculate total cost
-            total_cost = sum(performance_data['cost_breakdown'].values())
-            performance_data['total_installation_cost'] = total_cost
-            
-        # Add sizing status
-        performance_data['sizing_status'] = sizing_check
+        # Calculate financial metrics
+        electricity_rate = float(data.get('electricity_rate', 10.0))
+        project_life = int(data.get('project_life', 25))
+        fed_credit = float(data.get('fed_credit', 0.26))
+        st_credit = float(data.get('st_credit', 0.0))
+        interest_rate = float(data.get('interest_rate', 0.05))
+        maintenance_cost = float(data.get('maintenance_cost', 10.0))
         
-        # compile final
+        # Get costs
+        module_cost = float(data.get('module_cost', 0.5))  # $/W
+        inverter_cost = float(data.get('inverter_cost', 0.1))  # $/W
+        labor_cost = float(data.get('labor_cost', 0.2))  # $/W
+        other_cost = float(data.get('other_cost', 0.2))  # $/W
+        
+        # Calculate total capex
+        total_capex = (module_cost + inverter_cost + labor_cost + other_cost) * system_size * 1000  # Convert to $
+        
+        # Add land cost if provided
+        if land_cost > 0:
+            total_capex += land_cost
+        
+        # Get financial metrics
+        financial_metrics = calculate_financial_metrics(
+            performance_data['annual_energy'],
+            total_capex,
+            electricity_rate,
+            project_life,
+            fed_credit,
+            st_credit,
+            interest_rate,
+            maintenance_cost
+        )
+        
+        # Combine all metrics into response
         response = {
             'success': True,
             'system_analysis': {
-                'annual_energy': performance_data['annual_energy'],
-                'peak_dc_power': performance_data['peak_dc_power'],
-                'peak_ac_power': performance_data['peak_ac_power'],
-                'performance_ratio': performance_data['performance_ratio'],
-                'capacity_factor': performance_data['capacity_factor'],
-                'specific_yield': performance_data['specific_yield'],
+                'annual_energy': float(performance_data['annual_energy']),
+                'peak_dc_power': float(performance_data['peak_dc_power']),
+                'peak_ac_power': float(performance_data['peak_ac_power']),
+                'capacity_factor': float(performance_data['capacity_factor']),
+                'performance_ratio': float(performance_data['performance_ratio']),
+                'specific_yield': float(performance_data['specific_yield']),
                 'modules_per_string': performance_data['modules_per_string'],
                 'strings_per_inverter': performance_data['strings_per_inverter'],
                 'number_of_inverters': performance_data['number_of_inverters'],
@@ -940,16 +1007,24 @@ def calculate():
                 'npv': performance_data['npv'],
                 'payback_period': performance_data['payback_period'],
                 'cost_breakdown': performance_data['cost_breakdown'],
-                'cumulative_cashflow': performance_data['cumulative_cashflow'],
-                'annual_cashflow': performance_data['annual_cashflow']
-            }
+                'cumulative_cashflow': [float(x) for x in performance_data['cumulative_cashflow']],
+                'annual_cashflow': [float(-total_capex)] + performance_data['annual_cashflow'],  # Include initial investment
+                'min_design_temp': float(performance_data['min_design_temp']),
+                'max_design_temp': float(performance_data['max_design_temp']),
+                'effective_irradiance': float(performance_data['effective_irradiance']),
+                'cell_temperature': float(performance_data['cell_temperature']),
+                'monthly_ghi': [float(x) for x in performance_data['monthly_ghi']],
+                'monthly_temperature': [float(x) for x in performance_data['monthly_temperature']],
+                'hourly_wind_speed': [float(x) for x in performance_data['hourly_wind_speed']]
+            },
+            'sizing_status': sizing_status
         }
         print("Response prepared:", response)  # Debug log
         return jsonify(response)
+        
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error':str(e)}),400
+        print(f"Error in calculate: {str(e)}")  # Debug log
+        return jsonify({"success": False, "error": str(e)}), 400
 
 
 def get_location_info(lat, lon):
@@ -957,9 +1032,11 @@ def get_location_info(lat, lon):
     try:
         # For now, return placeholder data
         # In a real app, you would use a geocoding service like Nominatim or Google Maps
+        geolocator = Nominatim(user_agent="my_application")
+        location = geolocator.reverse(f"{lat}, {lon}") 
         return {
-            'city': 'Dhaka',  # Default for Bangladesh coordinates
-            'country': 'Bangladesh'
+            'city': location.address.split(",")[0],  # Default for Bangladesh coordinates
+            'country': location.address.split(",")[-1]
         }
     except Exception as e:
         print(f"Error getting location info: {e}")
@@ -967,6 +1044,14 @@ def get_location_info(lat, lon):
             'city': '-',
             'country': '-'
         }
+
+
+
+
+
+
+
+
 
 @app.route('/api/get_modules', methods=['GET'])
 def get_modules():
@@ -1031,6 +1116,5 @@ def get_weather_data_route():
 def get_api_config():
     return jsonify({'success':True,'api_key':NREL_API_KEY,'email':EMAIL})
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True)
