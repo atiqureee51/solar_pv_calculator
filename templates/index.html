@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; 
                  script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com blob:; 
@@ -19,7 +18,6 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css">
-  
   
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   
@@ -38,10 +36,10 @@
   <main>
   <div class="container-fluid">
     <!-- Header Section -->
-    <div class="header mb-4">
-      <h1 class="text-center">Solar PV System Calculator</h1>
-      <p class="text-center text-muted">Design and analyze your photovoltaic system with real-time weather data</p>
-    </div>
+    <div class="header-section text-center">
+      <h1>Solar PV System Calculator</h1>
+      <p>Design and analyze your photovoltaic system with NREL weather data</p>
+   </div>
 
 
 
@@ -55,7 +53,7 @@
               <select class="form-select mb-2" id="region">
                 <option value="bangladesh" >🇧🇩 Bangladesh</option>
                 <option value="usa" selected>🇺🇸 USA</option>
-                <option value="world">🌍 World</option>
+                <option value="world" >🌍 World</option>
               </select>
               <select class="form-select" id="currency">
                 <option value="BDT" >BDT (৳)</option>
@@ -65,10 +63,15 @@
           </div>
 
           <!-- Location Section -->
-          <div class="card-md-4">
-            <h5 class="mb-2">PV System Calculator Configuration</h5>
-                        
-          </div>
+          <div class="config-main-header">
+            <h2>PV System Calculator Configuration</h2>
+        </div>
+        <div class="config-panels-container">
+            <!-- Your existing configuration panels here -->
+        
+
+
+
           <div class="card mb-3">
             <div class="card-header" data-bs-toggle="collapse" data-bs-target="#locationSection" role="button">
               <h5 class="mb-0">Location</h5>
@@ -306,6 +309,12 @@
         </form>
       </div>
 
+
+
+    </div>
+
+
+
       <!-- Main Content -->
       <div class="col-md-9">
         <!-- Map Section -->
@@ -325,9 +334,9 @@
                   </select>
                 </div>
 
-                <div class="col-md-4" id="system-size-inputs">
+                <div class="col-md-6" id="system-size-inputs">
                   <div class="input-group">
-                    <span class="input-group-text">System Size</span>
+                    <span class="input-group-text"> Desired DC System Size</span>
                     <input type="number" class="form-control" id="system-size" name="system_size" value="5" step="0.1">
                     <span class="input-group-text">kW</span>
                   </div>
@@ -343,6 +352,10 @@
               </div>
             </div>
 
+
+            <div id="sizingStatus" class="mt-2">
+              <!-- script.js populates this with "undersized" / "oversized" / "ok" message -->
+            </div>
 
 
             <!-- Calculate Button & Status -->
@@ -360,15 +373,15 @@
             <div class="card bg-primary text-white">
               <div class="card-body">
                 <h5 class="card-title">Total Savings (25 years)</h5>
-                <h3 id="total-savings25" class="counter">$0</h3>
+                <h3 id="total-savings25" class="counter"></h3>
               </div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="card bg-success text-white">
               <div class="card-body">
-                <h5 class="card-title">System Size</h5>
-                <h3 id="system-size-display" class="counter">0 kW</h3>
+                <h5 class="card-title"> System Size</h5>
+                <h3 id="system-size-display" class="counter"></h3>
               </div>
             </div>
           </div>
@@ -376,7 +389,7 @@
             <div class="card bg-info text-white">
               <div class="card-body">
                 <h5 class="card-title">LCOE</h5>
-                <h3 id="dashboard-lcoe">-</h3>
+                <h3 id="dashboard-lcoe"></h3>
               </div>
             </div>
           </div>
@@ -384,7 +397,7 @@
             <div class="card bg-warning text-dark">
               <div class="card-body">
                 <h5 class="card-title">System Area</h5>
-                <h3 id="system-area">-</h3>
+                <h3 id="system-area"></h3>
               </div>
             </div>
           </div>
@@ -434,7 +447,7 @@
               <a class="nav-link active" id="system-analysis-tab" data-bs-toggle="tab" href="#system-analysis" role="tab">System Analysis</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" id="technical-tab" data-bs-toggle="tab" href="#technical" role="tab">Technical</a>
+              <a class="nav-link" id="technical-tab" data-bs-toggle="tab" href="#technical" role="tab">Technical Analysis</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" id="financial-tab" data-bs-toggle="tab" href="#financial" role="tab">Financial Analysis</a>
@@ -492,14 +505,14 @@
                             <div class="card-body">
                                 <div class="row">
                                   <div class="col-md-6">
-                                    <p><strong>Peak DC Power:</strong> <span id="peak-dc">-</span> kW</p>
-                                    <p><strong>Peak AC Power:</strong> <span id="peak-ac">-</span> kW</p>
-                                    <p><strong>Capacity Factor:</strong> <span id="capacity-factor">-</span> %</p>
+                                    <p><strong>Peak DC Power:</strong> <span id="peak-dc">-</span> </p>
+                                    <p><strong>Peak AC Power:</strong> <span id="peak-ac">-</span> </p>
+                                    <p><strong>Capacity Factor:</strong> <span id="capacity-factor">-</span> </p>
                                   </div>
                                   <div class="col-md-6">
-                                    <p><strong>Performance Ratio:</strong> <span id="performance-ratio">-</span> %</p>
-                                    <p><strong>Annual Energy:</strong> <span id="annual-energy">-</span> kWh</p>
-                                    <p><strong>Specific Yield:</strong> <span id="specific-yield">-</span> kWh/kW</p>
+                                    <p><strong>Performance Ratio:</strong> <span id="performance-ratio">-</span> </p>
+                                    <p><strong>Annual Energy:</strong> <span id="annual-energy">-</span> </p>
+                                    <p><strong>Specific Yield:</strong> <span id="specific-yield">-</span> </p>
                                   </div>
                                 </div>
                             </div>
@@ -526,116 +539,124 @@
                     </div>
                 </div>
             </div>
+
+
+<!-- Technical Tab -->
+<div class="tab-pane fade" id="technical" role="tabpanel">
+  <div class="row mt-4">
+      <!-- Monthly Production -->
+      <div class="col-md-6">
+          <div class="card mb-4">
+              <div class="card-header">
+                  <h5 class="card-title mb-0">Monthly Energy Profile</h5>
+              </div>
+              <div class="card-body">
+                  <canvas id="monthly-production-chart"></canvas>
+              </div>
+          </div>
+      </div>
+      
+      <!-- Daily Production -->
+      <div class="col-md-6">
+          <div class="card mb-4">
+              <div class="card-header">
+                  <h5 class="card-title mb-0">Daily Energy Profile</h5>
+              </div>
+              <div class="card-body">
+                  <canvas id="daily-production-chart"></canvas>
+              </div>
+          </div>
+      </div>
+      
+      <!-- System Components -->
+      <div class="col-md-6">
+          <div class="card mb-4">
+              <div class="card-header">
+                  <h5 class="card-title mb-0">System Components</h5>
+              </div>
+              <div class="card-body">
+                  <table class="table table-sm">
+                      <tr>
+                          <td>Module Type:</td>
+                          <td id="module-type">-</td>
+                      </tr>
+                      <tr>
+                          <td>Module Power:</td>
+                          <td id="module-power">-</td>
+                      </tr>
+                      <tr>
+                          <td>Modules in Series:</td>
+                          <td id="modules-series">-</td>
+                      </tr>
+                      <tr>
+                          <td>Parallel Strings:</td>
+                          <td id="parallel-strings">-</td>
+                      </tr>
+                      <tr>
+                          <td>Total Modules:</td>
+                          <td id="total-modules">-</td>
+                      </tr>
+                  </table>
+              </div>
+          </div>
+      </div>
+
+      <!-- Inverter Details -->
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-header">
+            <h5 class="card-title mb-0">Inverter Details</h5>
+          </div>
+          <div class="card-body">
+            <table class="table table-sm">
+              <tr>
+                <td>Inverter Type:</td>
+                <td id="inverter-type">-</td>
+              </tr>
+              <tr>
+                <td>Inverter Power:</td>
+                <td id="inverter-power">-</td>
+              </tr>
+              <tr>
+                <td>Number of Inverters:</td>
+                <td id="inverter-count">-</td>
+              </tr>
+              <tr>
+                <td>DC/AC Ratio:</td>
+                <td id="dc-ac-ratio">-</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+          <!-- Area Information -->
+          <div class="card mb-4" id="area-info" style="display: none;">
+              <div class="card-header">
+                  <h5 class="card-title mb-0">Area Analysis</h5>
+              </div>
+              <div class="card-body">
+                  <table class="table table-sm">
+                      <tr>
+                          <td>Available Area:</td>
+                          <td id="polygon-area">-</td>
+                      </tr>
+                      <tr>
+                          <td>Possible Modules:</td>
+                          <td id="possible-modules">-</td>
+                      </tr>
+                      <tr>
+                          <td>Required Area:</td>
+                          <td id="total-area">-</td>
+                      </tr>
+                  </table>
+              </div>
+          </div>
+      </div>
+  </div>
+
+
             
-            <!-- Technical Tab -->
-            <div class="tab-pane fade" id="technical" role="tabpanel">
-                <div class="row mt-4">
-                    <!-- Monthly Production -->
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Monthly Energy Profile</h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="monthly-production-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Daily Production -->
-                    <div class="col-md-6">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Daily Energy Profile</h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="daily-production-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Technical Details -->
-                    <div class="col-md-12">
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Technical Details</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <td>Module Type:</td>
-                                                <td id="module-type">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Module Power:</td>
-                                                <td id="module-power">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Modules in Series:</td>
-                                                <td id="modules-series">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Parallel Strings:</td>
-                                                <td id="parallel-strings">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Total Modules:</td>
-                                                <td id="total-modules">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Inverter Type:</td>
-                                                <td id="inverter-type">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Inverter Power:</td>
-                                                <td id="inverter-power">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>Number of Inverters:</td>
-                                                <td id="inverter-count">-</td>
-                                            </tr>
-                                            <tr>
-                                                <td>DC/AC Ratio:</td>
-                                                <td id="dc-ac-ratio">-</td>
-                                            </tr>
-                                        </table>
-                                        
-                                        <!-- Area Information Section -->
-                                        <div id="area-info" class="mt-3" style="display: none;">
-                                            <h6>Area Analysis</h6>
-                                            <table class="table table-sm">
-                                                <tr>
-                                                    <td>Available Area:</td>
-                                                    <td id="polygon-area">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Possible Modules:</td>
-                                                    <td id="possible-modules">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <td>Required Area:</td>
-                                                    <td id="total-area">-</td>
-                                                </tr>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <table class="table table-sm">
-                                            <tr>
-                                                <td>System Size:</td>
-                                                <td id="system-size">-</td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-           
             <!-- Financial Tab -->
             <div class="tab-pane fade" id="financial" role="tabpanel">
               <div class="row mt-4">
@@ -697,7 +718,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="costBreakdownModalLabel">System Cost Breakdown</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -787,7 +808,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="moduleDetailsModalLabel">Module Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
       </div>
       <div class="modal-body" id="moduleDetailsContent">
         <!-- Populated by JavaScript -->
@@ -804,7 +825,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="inverterDetailsModalLabel">Inverter Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
       </div>
       <div class="modal-body" id="inverterDetailsContent">
         <!-- Populated by JavaScript -->
