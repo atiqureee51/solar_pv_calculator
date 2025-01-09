@@ -1067,13 +1067,14 @@ def get_modules():
         return jsonify({'error': str(e)}),500
 
 @app.route('/api/get_inverters', methods=['GET'])
+
 def get_inverters():
     try:
         inv_db = pvsystem.retrieve_sam('SandiaInverter')
         inverter_list = inv_db.columns.tolist()
         print("Total inverters:", len(inverter_list))
-        print("Default inverter (index 1337):", inverter_list[1337])
-        return jsonify({'inverters': inverter_list,'default_index':1337})
+        print("Default inverter (index 1343):", inverter_list[1343])
+        return jsonify({'inverters': inverter_list,'default_index':1343})
     except Exception as e:
         print("Error getting inverters:", str(e))
         return jsonify({'error':str(e)}),500
