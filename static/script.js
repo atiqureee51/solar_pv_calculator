@@ -7,16 +7,16 @@ let map = null;
 let marker = null;
 let drawnItems;
 let drawControl;
-
-// Chart variables
-let monthlyProductionChart = null;
+let productionChart = null;
+let dailyProductionChart = null;
 let ghiChart = null;
 let temperatureChart = null;
-let dailyProductionChart = null;
 let windChart = null;
 let financialChart = null;
 let cashflowChart = null;
 let costBreakdownChart = null;
+
+// Chart variables
 
 // Constants
 const DEFAULT_VALUES = {
@@ -334,10 +334,10 @@ function initializeCharts() {
         // Create production chart
         const productionCtx = document.getElementById('monthly-production-chart');
         if (productionCtx) {
-            if (monthlyProductionChart) {
-                monthlyProductionChart.destroy();
+            if (productionChart) {
+                productionChart.destroy();
             }
-            monthlyProductionChart = createProductionChart(productionCtx);
+            productionChart = createProductionChart(productionCtx);
         }
 
         // Create GHI chart
@@ -625,26 +625,20 @@ $(document).ready(function() {
 
 // Event listeners
 function setupEventListeners() {
-    document.getElementById('pv-calculator-form').addEventListener('submit', handleFormSubmit);
-    document.getElementById('sizing-method').addEventListener('change', handleSizingMethodChange);
-    document.getElementById('latitude').addEventListener('change', updateMapLocation);
-    document.getElementById('longitude').addEventListener('change', updateMapLocation);
+    // Use jQuery consistently for all event handlers
+    $('#pv-calculator-form').on('submit', handleFormSubmit);
+    $('#system-type').on('change', updateSystemType);
+    $('#temp-model-family').on('change', handleTemperatureModelChange);
+    $('#sapm-type').on('change', updateSAPMParameters);
+    $('#pvsyst-type').on('change', updatePVsystParameters);
+    $('#sizing-method').on('change', handleSizingMethodChange);
+    $('#latitude, #longitude').on('change', updateMapLocation);
     
-    // Temperature model event listeners
-    const tempModelFamily = document.getElementById('temp-model-family');
-    if (tempModelFamily) {
-        tempModelFamily.addEventListener('change', handleTemperatureModelChange);
-    }
-    
-    const sapmType = document.getElementById('sapm-type');
-    if (sapmType) {
-        sapmType.addEventListener('change', updateSAPMParameters);
-    }
-    
-    const pvsystType = document.getElementById('pvsyst-type');
-    if (pvsystType) {
-        pvsystType.addEventListener('change', updatePVsystParameters);
-    }
+    // Map tile error handling
+    map.on('tileerror', function(error) {
+        console.error('Map tile error:', error);
+        showError('Failed to load map tiles. Please check your internet connection.');
+    });
 }
 
 function handleSizingMethodChange() {
@@ -1424,12 +1418,15 @@ $('#costBreakdownModal').on('show.bs.modal', function () {
         $('#permitting_cost').val((0.11 * rate).toFixed(2));
         $('#inspection_cost').val((0.055 * rate).toFixed(2));
         $('#interconnection_cost').val((0.11 * rate).toFixed(2));
+        $('#land_cost').val('0.00');
     }
     
+    // Initialize or update the chart
+    if (!costBreakdownChart) {
+        initializeCostBreakdownChart();
+    }
     calculateTotalInstalledCost();
-})
-
-// Update form data collection to use cost breakdown
+});
 
 // Update results
 function updateResults(systemAnalysis) {
@@ -1851,35 +1848,8 @@ function showSuccess(message) {
 // Update currency display
 $('#currency').change(function() {
     const currency = $(this).val();
-    const rate = currency === 'BDT' ? 110 : 1;
-    const symbol = currency === 'BDT' ? '৳' : '$';
-    
-    // Update all cost labels
-    $('.cost-component').each(function() {
-        const usdValue = $(this).data('usd-value');
-        $(this).val((usdValue * rate).toFixed(1));
-        const label = $(this).closest('.form-group').find('label');
-        label.text(label.text().replace(/[\$৳]\/W/, symbol + '/W'));
-    });
-    
-    // Update installed cost
-    const installedCostUSD = $('#installed_cost').data('usd-value');
-    if (installedCostUSD) {
-        $('#installed_cost').val((installedCostUSD * rate).toFixed(2));
-    }
-    
-    // Update maintenance cost
-    const maintenanceUSD = $('#maintenance_cost').data('usd-value');
-    if (maintenanceUSD) {
-        $('#maintenance_cost').val((maintenanceUSD * rate).toFixed(2));
-    }
-    
-    // Update electricity rate
-    const electricityUSD = $('#electricity_rate').data('usd-value');
-    if (electricityUSD) {
-        $('#electricity_rate').val((electricityUSD * rate).toFixed(2));
-    }
-})
+    handleCurrencyChange(currency);
+});
 
 // Region change handler
 function handleRegionChange(region) {
@@ -1896,6 +1866,11 @@ function handleRegionChange(region) {
     // Update map location
     updateMapLocation();
 }
+
+// Initialize charts when document is ready
+$(document).ready(function() {
+    initializeCostBreakdownChart();
+});
 
 // House Energy Calculator
 const APPLIANCE_POWER = {
@@ -2085,51 +2060,3 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 })
-
-
-function initializeCostBreakdownChart() {
-    const ctx = document.getElementById('costBreakdownChart');
-    if (!ctx) return;
-    
-    if (costBreakdownChart) {
-        costBreakdownChart.destroy();
-    }
-    
-    costBreakdownChart = new Chart(ctx.getContext('2d'), {
-        type: 'pie',
-        data: {
-            labels: [
-                'Modules',
-                'Inverters',
-                'Balance of System',
-                'Installation',
-                'Soft Costs',
-                'Land'
-            ],
-            datasets: [{
-                data: [0, 0, 0, 0, 0, 0],
-                backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF',
-                    '#FF9F40'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
-    });
-}
-
-// Initialize charts when document is ready
-$(document).ready(function() {
-    initializeCostBreakdownChart();
-});
