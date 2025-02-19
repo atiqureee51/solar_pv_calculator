@@ -330,88 +330,84 @@ $(document).ready(function() {
 
 // Chart initialization
 function initializeCharts() {
-    // Initialize empty charts
+    // Initialize empty charts with their specific configurations
     const chartConfigs = [
-        {id: 'monthly-production-chart', title: 'Monthly Energy Production'},
-        {id: 'daily-production-chart', title: 'Daily Energy Production'},
-        {id: 'ghi-chart', title: 'Global Horizontal Irradiance'},
-        {id: 'temperature-chart', title: 'Temperature'},
-        {id: 'wind-chart', title: 'Wind Speed'},
-        {id: 'cashflow-chart', title: 'Cash Flow'}
+        {
+            id: 'monthly-production-chart',
+            title: 'Monthly Energy Production',
+            type: 'bar',
+            yLabel: 'Energy (kWh)'
+        },
+        {
+            id: 'daily-production-chart',
+            title: 'Daily Energy Production',
+            type: 'line',
+            yLabel: 'Energy (kWh)'
+        },
+        {
+            id: 'ghi-chart',
+            title: 'Global Horizontal Irradiance',
+            type: 'line',
+            yLabel: 'GHI (kWh/m²)'
+        },
+        {
+            id: 'temperature-chart',
+            title: 'Temperature',
+            type: 'line',
+            yLabel: 'Temperature (°C)'
+        },
+        {
+            id: 'wind-chart',
+            title: 'Wind Speed',
+            type: 'line',
+            yLabel: 'Wind Speed (m/s)'
+        },
+        {
+            id: 'cashflow-chart',
+            title: 'Cumulative Cash Flow',
+            type: 'line',
+            yLabel: 'Cash Flow'
+        }
     ];
 
+    // Create empty charts
     chartConfigs.forEach(config => {
-        createEmptyChart(config.id, config.title);
+        createEmptyChart(config);
     });
 
-    // Initialize cost breakdown chart separately since it's a pie chart
-    const costBreakdownCtx = document.getElementById('cost-breakdown-chart');
-    if (costBreakdownCtx) {
-        // Destroy existing chart if it exists
-        let existingChart = Chart.getChart('cost-breakdown-chart');
-        if (existingChart) {
-            existingChart.destroy();
-        }
-
-        new Chart(costBreakdownCtx, {
-            type: 'pie',
-            data: {
-                labels: [],
-                datasets: [{
-                    data: [],
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.8)',
-                        'rgba(54, 162, 235, 0.8)',
-                        'rgba(255, 206, 86, 0.8)',
-                        'rgba(75, 192, 192, 0.8)',
-                        'rgba(153, 102, 255, 0.8)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right'
-                    },
-                    title: {
-                        display: true,
-                        text: 'System Cost Breakdown'
-                    }
-                }
-            }
-        });
-    }
+    // Initialize cost breakdown pie chart
+    initializeCostBreakdownChart();
 }
 
-function createEmptyChart(canvasId, title) {
-    const ctx = document.getElementById(canvasId);
+function createEmptyChart(config) {
+    const ctx = document.getElementById(config.id);
     if (!ctx) {
-        console.error(`Canvas with id ${canvasId} not found`);
+        console.error(`Canvas with id ${config.id} not found`);
         return;
     }
 
     // Destroy existing chart if it exists
-    let existingChart = Chart.getChart(canvasId);
+    let existingChart = Chart.getChart(config.id);
     if (existingChart) {
         existingChart.destroy();
     }
 
-    new Chart(ctx, {
-        type: 'line',
+    const chartConfig = {
+        type: config.type,
         data: {
             labels: [],
             datasets: [{
-                label: title,
+                label: config.title,
                 data: [],
                 borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                backgroundColor: config.type === 'bar' ? 'rgba(75, 192, 192, 0.5)' : 'rgba(75, 192, 192, 0.2)',
                 tension: 0.1,
                 fill: true
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 x: {
                     title: {
@@ -422,21 +418,68 @@ function createEmptyChart(canvasId, title) {
                 y: {
                     title: {
                         display: true,
-                        text: 'Value'
-                    }
+                        text: config.yLabel
+                    },
+                    beginAtZero: true
                 }
             },
             plugins: {
                 title: {
                     display: true,
-                    text: title
+                    text: config.title
+                }
+            }
+        }
+    };
+
+    new Chart(ctx, chartConfig);
+}
+
+function initializeCostBreakdownChart() {
+    const ctx = document.getElementById('cost-breakdown-chart');
+    if (!ctx) {
+        console.error('Cost breakdown chart canvas not found');
+        return;
+    }
+
+    // Destroy existing chart if it exists
+    let existingChart = Chart.getChart('cost-breakdown-chart');
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                },
+                title: {
+                    display: true,
+                    text: 'System Cost Breakdown'
                 }
             }
         }
     });
 }
 
-// Call initializeCharts when document is ready
+// Initialize charts when document is ready
 $(document).ready(function() {
     initializeCharts();
 });
@@ -1945,49 +1988,27 @@ function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
         return;
     }
 
-    // Destroy existing chart if it exists
-    let existingChart = Chart.getChart(canvasId);
-    if (existingChart) {
-        existingChart.destroy();
+    // Get existing chart
+    let chart = Chart.getChart(canvasId);
+    if (!chart) {
+        console.error(`No chart found for canvas id ${canvasId}`);
+        return;
     }
 
-    // Create new chart
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: title,
-                data: data,
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: xLabel
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: yLabel
-                    },
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                }
-            }
-        }
-    });
+    // Update chart data and options
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    
+    // Update axis labels if provided
+    if (xLabel) {
+        chart.options.scales.x.title.text = xLabel;
+    }
+    if (yLabel) {
+        chart.options.scales.y.title.text = yLabel;
+    }
+    if (title) {
+        chart.options.plugins.title.text = title;
+    }
+
+    chart.update();
 }
