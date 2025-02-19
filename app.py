@@ -177,18 +177,17 @@ def calculate_financial_metrics(
         cumulative_cashflow = [-total_capital_cost]  # Start with negative capital cost
         
         # Calculate annual savings with degradation and price escalation
-        annual_savings = 0
-        total_energy = 0
         current_energy = annual_energy
         current_rate = electricity_rate
         
         for year in range(project_life):
-            # Calculate degraded energy and escalated price
+            # Calculate energy production with degradation
             year_energy = current_energy
-            total_energy += year_energy
+            
+            # Calculate savings with price escalation
             year_savings = year_energy * current_rate
             
-            # Calculate net cashflow (include maintenance cost)
+            # Calculate net cashflow (savings minus maintenance)
             net_cashflow = year_savings - maintenance_cost
             cashflows.append(float(net_cashflow))
             
@@ -198,12 +197,11 @@ def calculate_financial_metrics(
             # Update for next year
             current_energy *= (1 - degradation)  # Account for panel degradation
             current_rate *= (1 + price_escalation)  # Account for electricity price escalation
-            annual_savings += year_savings
         
         # Calculate NPV
         npv = -total_capital_cost  # Start with negative capital cost
         for i, cashflow in enumerate(cashflows, 1):
-            npv += cashflow / ((1 + interest_rate) ** i)
+            npv += cashflow / ((1 + interest_rate/100) ** i)
         
         # Calculate simple payback period
         first_year_savings = annual_energy * electricity_rate - maintenance_cost
@@ -216,23 +214,19 @@ def calculate_financial_metrics(
         
         for year in range(project_life):
             # Add maintenance cost for this year
-            discounted_cost += maintenance_cost / ((1 + interest_rate) ** (year + 1))
+            discounted_cost += maintenance_cost / ((1 + interest_rate/100) ** (year + 1))
             # Add degraded energy production
-            discounted_energy += current_energy / ((1 + interest_rate) ** (year + 1))
+            discounted_energy += current_energy / ((1 + interest_rate/100) ** (year + 1))
             current_energy *= (1 - degradation)
         
         lcoe = discounted_cost / discounted_energy if discounted_energy > 0 else float('inf')
-        
-        # Calculate CO2 savings (using EPA average of 0.7 kg CO2/kWh)
-        co2_savings = (annual_energy * 0.7 / 1000)  # Convert to metric tons
         
         return {
             'annual_savings': float(first_year_savings),
             'payback_period': float(payback_period),
             'lcoe': float(lcoe),
-            'co2_savings': float(co2_savings),
             'npv': float(npv),
-            'cashflow': cumulative_cashflow
+            'cashflow': [float(x) for x in cumulative_cashflow]
         }
         
     except Exception as e:
@@ -241,7 +235,6 @@ def calculate_financial_metrics(
             'annual_savings': 0.0,
             'payback_period': float('inf'),
             'lcoe': float('inf'),
-            'co2_savings': 0.0,
             'npv': 0.0,
             'cashflow': [0.0]
         }
@@ -396,6 +389,38 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         actual_system_size_kw = actual_system_size_w / 1000
         dc_ac_ratio = actual_system_size_w / (num_inverters_needed * inverter['Paco'])
         
+        # Calculate optimal number of inverters
+        desired_power_w = system_size_kw * 1000
+        inverter_power_w = float(inverter.get('Paco', 0))
+        max_input_power = float(inverter.get('Pdco', inverter_power_w))
+
+        # Use a single inverter if it can handle the power with DC/AC ratio <= 1.3
+        if desired_power_w <= max_input_power and desired_power_w <= (inverter_power_w * 1.3):
+            num_inverters = 1
+        else:
+            # Calculate minimum inverters needed based on both DC and AC ratings
+            min_inverters_dc = math.ceil(desired_power_w / max_input_power)
+            min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))
+            num_inverters = max(min_inverters_dc, min_inverters_ac)
+
+        # Create array of inverters
+        inverters = [inverter] * num_inverters
+
+        # Calculate power per inverter
+        power_per_inverter = system_size_kw * 1000 / num_inverters
+
+        # Create array of identical systems
+        systems = []
+        for inv in inverters:
+            system = {
+                'module_parameters': module,
+                'inverter_parameters': inv,
+                'temperature_model_parameters': temperature_model_parameters,
+                'modules_per_string': max_modules_per_string,
+                'strings': max_parallel_strings
+            }
+            systems.append(system)
+
         location_obj = location.Location(latitude, longitude, 'Etc/GMT', altitude=0)
         
         if 'air_temperature' not in weather.columns:
@@ -526,7 +551,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'total_modules': int(modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'modules_per_string': max_modules_per_string,
             'strings_per_inverter': max_parallel_strings,
-            'number_of_inverters': num_inverters_needed,
+            'number_of_inverters': num_inverters,
             'actual_system_size_kw': float(system_size_kw),
             'dc_ac_ratio': float(dc_ac_ratio),
             'module_type': module_name,

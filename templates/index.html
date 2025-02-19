@@ -22,12 +22,26 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   
   <style>
-    
     #map {
       height: 400px;
       width: 100%;
       border-radius: 8px;
       margin-bottom: 20px;
+    }
+    
+    .text-muted {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+        
+    .counter {
+        margin-bottom: 0;
+        font-size: 1.5rem;
+    }
+        
+    #system-size-difference {
+        display: block;
+        font-size: 0.8rem;
+        margin-top: 0.5rem;
     }
   </style>
 </head>
@@ -516,8 +530,18 @@
           <div class="col-md-3">
             <div class="card bg-success text-white">
               <div class="card-body">
-                <h5 class="card-title"> System Size</h5>
-                <h3 id="system-size-display" class="counter"></h3>
+                <h5 class="card-title">System Size</h5>
+                <div class="row">
+                  <div class="col-md-6">
+                    <small class="text-muted">Desired</small>
+                    <h3 id="desired-system-size" class="counter"></h3>
+                  </div>
+                  <div class="col-md-6">
+                    <small class="text-muted">Actual</small>
+                    <h3 id="actual-system-size" class="counter"></h3>
+                  </div>
+                </div>
+                <small id="system-size-difference" class="text-muted mt-2"></small>
               </div>
             </div>
           </div>
@@ -871,26 +895,26 @@
               <!-- Modules -->
               <div class="form-group mb-3">
                 <label for="module_cost">Modules ($/W)</label>
-                <input type="number" class="form-control cost-component" id="module_cost" value="0.35" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="module_cost" value="0.50" step="0.01" min="0">
               </div>
               <!-- Inverters -->
               <div class="form-group mb-3">
                 <label for="inverter_cost">Inverters ($/W)</label>
-                <input type="number" class="form-control cost-component" id="inverter_cost" value="0.10" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="inverter_cost" value="0.20" step="0.01" min="0">
               </div>
               <!-- Balance of System -->
               <h6 class="mt-4">Balance of System</h6>
               <div class="form-group mb-3">
                 <label for="racking_cost">Racking ($/W)</label>
-                <input type="number" class="form-control cost-component" id="racking_cost" value="0.11" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="racking_cost" value="0.20" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="wiring_cost">Wiring ($/W)</label>
-                <input type="number" class="form-control cost-component" id="wiring_cost" value="0.165" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="wiring_cost" value="0.15" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="disconnect_cost">Disconnect ($/W)</label>
-                <input type="number" class="form-control cost-component" id="disconnect_cost" value="0.055" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="disconnect_cost" value="0.15" step="0.01" min="0">
               </div>
             </div>
             <div class="col-md-6">
@@ -903,29 +927,29 @@
               </div>
               <div class="form-group mb-3">
                 <label for="labor_cost">Labor ($/W)</label>
-                <input type="number" class="form-control cost-component" id="labor_cost" value="0.22" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="labor_cost" value="0.30" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="install_overhead_cost">Install Overhead ($/W)</label>
-                <input type="number" class="form-control cost-component" id="install_overhead_cost" value="0.11" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="install_overhead_cost" value="0.20" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="profit_cost">Profit ($/W)</label>
-                <input type="number" class="form-control cost-component" id="profit_cost" value="0.11" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="profit_cost" value="0.20" step="0.01" min="0">
               </div>
               <!-- Soft Costs -->
               <h6 class="mt-4">Soft Costs</h6>
               <div class="form-group mb-3">
                 <label for="permitting_cost">Permitting ($/W)</label>
-                <input type="number" class="form-control cost-component" id="permitting_cost" value="0.11" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="permitting_cost" value="0.15" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="inspection_cost">Inspection ($/W)</label>
-                <input type="number" class="form-control cost-component" id="inspection_cost" value="0.055" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="inspection_cost" value="0.15" step="0.01" min="0">
               </div>
               <div class="form-group mb-3">
                 <label for="interconnection_cost">Interconnection ($/W)</label>
-                <input type="number" class="form-control cost-component" id="interconnection_cost" value="0.11" step="0.01" min="0">
+                <input type="number" class="form-control cost-component" id="interconnection_cost" value="0.15" step="0.01" min="0">
               </div>
             </div>
           </div>
