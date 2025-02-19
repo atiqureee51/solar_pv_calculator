@@ -927,7 +927,9 @@ def calculate():
                 'lcoe': financial_metrics['lcoe'],
                 'npv': financial_metrics['npv'],
                 'payback_period': financial_metrics['payback_period'],
-                'cashflow': financial_metrics['cashflow']
+                'cashflow': financial_metrics['cashflow'],
+                'annual_savings': financial_metrics['annual_savings'],
+                'co2_savings': financial_metrics['co2_savings']
             }
         }
         

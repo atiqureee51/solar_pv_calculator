@@ -1415,9 +1415,9 @@ function updateResults(systemAnalysis) {
     
     // ---------- TOP DASHBOARD ----------
     $('#total-production').text(systemAnalysis.results.annual_energy.toFixed(0) + ' kWh');
-    $('#cost-savings').text(symbol + systemAnalysis.annual_savings.toFixed(0));
-    $('#payback-period').text(systemAnalysis.simple_payback.toFixed(1) + ' yrs');
-    $('#co2-savings').text(systemAnalysis.co2_savings.toFixed(1) + ' tons');
+    $('#cost-savings').text(symbol + systemAnalysis.results.annual_savings.toFixed(0));
+    $('#payback-period').text(systemAnalysis.results.payback_period.toFixed(1) + ' yrs');
+    $('#co2-savings').text(systemAnalysis.results.co2_savings.toFixed(1) + ' tons');
 
     // ---------- System Info -----------
     $('#total-modules').text(systemAnalysis.results.total_modules);
