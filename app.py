@@ -66,12 +66,17 @@ def get_modules():
     # Combine both lists
     _module_cache['all_modules'] = _module_cache['sandia_processed'] + _module_cache['cec_processed']
     
-    # Find a good default module - look for a BP Solar module around 180-200W
+    # Try to use Sandia module at index 467 as default
     default_module = None
-    for module in _module_cache['all_modules']:
-        if 'bp' in module.lower() and any(x in module.lower() for x in ['180', '185', '190', '195', '200']):
-            default_module = module
-            break
+    if len(_module_cache['sandia_processed']) > 467:
+        default_module = _module_cache['sandia_processed'][467]
+    
+    # If Sandia module 467 not available, look for a BP Solar module around 180-200W
+    if default_module is None:
+        for module in _module_cache['all_modules']:
+            if 'bp' in module.lower() and any(x in module.lower() for x in ['180', '185', '190', '195', '200']):
+                default_module = module
+                break
             
     # If no BP module found, use first Sandia module as default
     if default_module is None and len(_module_cache['sandia_processed']) > 0:
