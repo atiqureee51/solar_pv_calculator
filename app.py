@@ -559,6 +559,9 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'min_design_temp': float(min_db_temp_ashrae),
             'max_design_temp': float(max_db_temp_ashrae),
             'effective_irradiance': float(wdf['effective_irradiance'].mean()),
+            'monthly_ghi': [float(x) for x in weather['ghi'].resample('M').sum().tolist()],
+            'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],
+            'hourly_wind_speed': [float(x) for x in weather['wind_speed'].tolist()],
             'cell_temperature': float(wdf['cell_temperature'].mean())
         }
         
@@ -949,9 +952,9 @@ def calculate():
                 'cost_breakdown': cost_breakdown
             },
             'weather_data': {
-                'monthly_ghi': [],
-                'monthly_temperature': [],
-                'hourly_wind_speed': []
+                'monthly_ghi':  [float(x) for x in system_output['monthly_ghi']],
+                'monthly_temperature':  [float(x) for x in system_output['monthly_temperature']],
+                'hourly_wind_speed':  [float(x) for x in system_output['hourly_wind_speed']]
             },
             'annual_savings': financial_metrics['annual_savings'],
             'lcoe': financial_metrics['lcoe'],

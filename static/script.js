@@ -386,7 +386,7 @@ function initializeCharts() {
         }
 
         // Create cost breakdown chart
-        const costBreakdownCtx = document.getElementById('costBreakdownChart');
+        const costBreakdownCtx = document.getElementById('cost-breakdown-chart');
         if (costBreakdownCtx) {
             if (costBreakdownChart) {
                 costBreakdownChart.destroy();
@@ -1468,14 +1468,6 @@ function updateResults(systemAnalysis) {
     const currency = $('#currency').val();
     const symbol = currency === 'BDT' ? '৳' : '$';
 
-    // Add a new line to show "sizing_status" in the UI if desired:
-    if (systemAnalysis.sizing_status && systemAnalysis.sizing_status.status) {
-        const statusClass = systemAnalysis.sizing_status.status === 'ok' ? 'text-success' : 
-                          systemAnalysis.sizing_status.status === 'oversized' ? 'text-warning' : 'text-danger';
-        $('#sizingStatus').html(`<div class="${statusClass}">${systemAnalysis.sizing_status.message}</div>`);
-    } else {
-        $('#sizingStatus').html('');
-    }
     // Update system performance metrics with units
     $('#peak-dc').text(`${systemAnalysis.system_output.peak_dc_power.toFixed(2)} kW`);
     $('#peak-ac').text(`${systemAnalysis.system_output.peak_ac_power.toFixed(2)} kW`);
@@ -1509,11 +1501,11 @@ function updateResults(systemAnalysis) {
     // Calculate weather averages
     const monthlyGHI = systemAnalysis.weather_data.monthly_ghi || [];
     const monthlyTemp = systemAnalysis.weather_data.monthly_temperature || [];
-    const hourlyWind = systemAnalysis.weather_data.hourly_wind_speed || [];
+    const monthlyWind = systemAnalysis.weather_data.monthly_wind_speed || [];
     
     const annualGHI = monthlyGHI.reduce((a, b) => a + b, 0);
     const avgTemp = monthlyTemp.length > 0 ? monthlyTemp.reduce((a, b) => a + b, 0) / monthlyTemp.length : 0;
-    const avgWind = hourlyWind.length > 0 ? hourlyWind.reduce((a, b) => a + b, 0) / hourlyWind.length : 0;
+    const avgWind = monthlyWind.length > 0 ? monthlyWind.reduce((a, b) => a + b, 0) / monthlyWind.length : 0;
     
     $('#annual-ghi').text(`${annualGHI.toFixed(0)} kWh/m²`);
     $('#avg-temp').text(`${avgTemp.toFixed(1)}°C`);
@@ -1529,59 +1521,206 @@ function updateResults(systemAnalysis) {
     $('#module-area').text(`${systemAnalysis.system_output.module_area.toFixed(2)} m²`);
     $('#possible-modules').text(systemAnalysis.system_output.total_modules);
 
-    // Update results
-    updateResults(systemAnalysis);
+    // ---------- Update Charts -----------
+    const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // 1. Production Charts
+    if (systemAnalysis.system_output.monthly_energy) {
+        updateChart(
+            'monthly-production-chart',
+            monthlyLabels,
+            systemAnalysis.system_output.monthly_energy,
+            'Monthly Energy Production',
+            'Month',
+            'Energy (kWh)'
+        );
+    }
+
+    if (systemAnalysis.system_output.daily_energy) {
+        const dailyLabels = Array.from({length: 365}, (_, i) => i + 1);
+        updateChart(
+            'daily-production-chart',
+            dailyLabels,
+            systemAnalysis.system_output.daily_energy,
+            'Daily Energy Production',
+            'Day of Year',
+            'Energy (kWh)'
+        );
+    }
+
+    // 2. Weather Charts
+    if (systemAnalysis.weather_data) {
+        if (systemAnalysis.weather_data.monthly_ghi) {
+            updateChart(
+                'ghi-chart',
+                monthlyLabels,
+                systemAnalysis.weather_data.monthly_ghi,
+                'Monthly Global Horizontal Irradiance',
+                'Month',
+                'GHI (kWh/m²)'
+            );
+        }
+
+        if (systemAnalysis.weather_data.monthly_temperature) {
+            updateChart(
+                'temperature-chart',
+                monthlyLabels,
+                systemAnalysis.weather_data.monthly_temperature,
+                'Monthly Average Temperature',
+                'Month',
+                'Temperature (°C)'
+            );
+        }
+
+        if (systemAnalysis.weather_data.monthly_wind_speed) {
+            updateChart(
+                'wind-chart',
+                monthlyLabels,
+                systemAnalysis.weather_data.monthly_wind_speed,
+                'Monthly Average Wind Speed',
+                'Month',
+                'Wind Speed (m/s)'
+            );
+        }
+    }
+
+    // 3. Financial Charts
+    if (systemAnalysis.financial_metrics) {
+        // Cost Breakdown Chart
+        if (systemAnalysis.financial_metrics.cost_breakdown) {
+            const costData = systemAnalysis.financial_metrics.cost_breakdown;
+            const ctx = document.getElementById('cost-breakdown-chart');
+            if (ctx) {
+                let existingChart = Chart.getChart('cost-breakdown-chart');
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(costData),
+                        datasets: [{
+                            data: Object.values(costData),
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.8)',
+                                'rgba(54, 162, 235, 0.8)',
+                                'rgba(255, 206, 86, 0.8)',
+                                'rgba(75, 192, 192, 0.8)',
+                                'rgba(153, 102, 255, 0.8)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'right'
+                            },
+                            title: {
+                                display: true,
+                                text: 'System Cost Breakdown'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Cashflow Chart
+        if (systemAnalysis.financial_metrics.cumulative_cashflow) {
+            const ctx = document.getElementById('cashflow-chart');
+            if (ctx) {
+                let existingChart = Chart.getChart('cashflow-chart');
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from(
+                            {length: systemAnalysis.financial_metrics.cumulative_cashflow.length},
+                            (_, i) => `Year ${i}`
+                        ),
+                        datasets: [{
+                            label: 'Cumulative Cash Flow',
+                            data: systemAnalysis.financial_metrics.cumulative_cashflow,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.1,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Project Timeline'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Cumulative Cash Flow'
+                                },
+                                ticks: {
+                                    callback: function(value) {
+                                        return symbol + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Project Cash Flow Over Time'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw;
+                                        return `Cash Flow: ${symbol}${value.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
 }
 
-function updateWeatherCharts(data) {
-    // monthly_ghi and monthly_temperature are arrays of length 12
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    // GHI chart
-    ghiChart.data = {
-        labels: months,
-        datasets: [{
-            label: 'Monthly GHI (kWh/m²)',
-            data: data.monthly_ghi,
-            backgroundColor: 'rgba(255, 159, 64, 0.2)',
-            borderColor: 'rgb(255, 159, 64)',
-            borderWidth: 1
-        }]
-    };
-    ghiChart.update();
-
-    // Temperature chart
-    temperatureChart.data = {
-        labels: months,
-        datasets: [{
-            label: 'Monthly Avg Temperature (°C)',
-            data: data.monthly_temperature,
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            borderColor: 'rgb(255, 99, 132)',
-            borderWidth: 1
-        }]
-    };
-    temperatureChart.update();
-}
 
 function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
-    // Check if chart already exists and destroy it
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error(`Canvas with id ${canvasId} not found`);
+        return;
+    }
+
+    // Destroy existing chart if it exists
     let existingChart = Chart.getChart(canvasId);
     if (existingChart) {
         existingChart.destroy();
     }
 
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    const chart = new Chart(ctx, {
+    // Create new chart
+    new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: title,
                 data: data,
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgb(54, 162, 235)',
-                borderWidth: 1
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                fill: true
             }]
         },
         options: {
@@ -1598,6 +1737,12 @@ function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
                         display: true,
                         text: yLabel
                     }
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
                 }
             }
         }
@@ -1869,7 +2014,7 @@ $(document).ready(function() {
 
 // Initialize cost breakdown chart
 function initializeCostBreakdownChart() {
-    const ctx = document.getElementById('costBreakdownChart');
+    const ctx = document.getElementById('cost-breakdown-chart');
     if (!ctx) return;
     
     if (costBreakdownChart) {
@@ -1940,4 +2085,134 @@ function handleCurrencyChange(currency) {
     
     // Recalculate total cost
     calculateTotalInstalledCost();
+}
+
+function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error(`Canvas with id ${canvasId} not found`);
+        return;
+    }
+
+    // Destroy existing chart if it exists
+    let existingChart = Chart.getChart(canvasId);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    // Create new chart
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: title,
+                data: data,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: xLabel
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: yLabel
+                    },
+                    beginAtZero: true
+                }
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            }
+        }
+    });
+}
+
+// Initialize all charts
+function initializeCharts() {
+    // Production Charts
+    createEmptyChart('monthly-production-chart', 'Monthly Energy Production');
+    createEmptyChart('daily-production-chart', 'Daily Energy Production');
+    
+    // Weather Charts
+    createEmptyChart('ghi-chart', 'Monthly Global Horizontal Irradiance');
+    createEmptyChart('temperature-chart', 'Monthly Average Temperature');
+    createEmptyChart('wind-chart', 'Monthly Average Wind Speed');
+    
+    // Financial Charts
+    createEmptyChart('cost-breakdown-chart', 'System Cost Breakdown', 'pie');
+    createEmptyChart('cashflow-chart', 'Project Cash Flow Over Time');
+}
+
+function createEmptyChart(canvasId, title, type = 'line') {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error(`Canvas with id ${canvasId} not found`);
+        return;
+    }
+
+    // Destroy existing chart if it exists
+    let existingChart = Chart.getChart(canvasId);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    const config = {
+        type: type,
+        data: {
+            labels: [],
+            datasets: [{
+                label: title,
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            }
+        }
+    };
+
+    if (type === 'pie') {
+        config.options.plugins.legend = {
+            position: 'right'
+        };
+    } else {
+        config.options.scales = {
+            x: {
+                display: true,
+                title: {
+                    display: true,
+                    text: 'Time'
+                }
+            },
+            y: {
+                display: true,
+                beginAtZero: true
+            }
+        };
+    }
+
+    new Chart(ctx, config);
 }
