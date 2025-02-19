@@ -1480,14 +1480,27 @@ function updateResults(systemAnalysis) {
     // Update cashflow chart
     if (systemAnalysis.results.cashflow) {
         const years = Array.from({length: systemAnalysis.results.cashflow.length}, (_, i) => i);
+        const formattedCashflow = systemAnalysis.results.cashflow.map(val => val / 1000); // Convert to thousands
         updateChart(
             'cashflow-chart',
             years,
-            systemAnalysis.results.cashflow,
+            formattedCashflow,
             'Cumulative Cash Flow',
             'Year',
             symbol + ' (thousands)',
-            true
+            true,
+            {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return symbol + value.toFixed(0) + 'k';
+                            }
+                        }
+                    }
+                }
+            }
         );
     }
 
@@ -1519,7 +1532,7 @@ function updateResults(systemAnalysis) {
     }
 
     // 2. Weather Charts
-    if (systemAnalysis.results.weather_data) {
+    if (systemAnalysis.results) {
         // GHI Chart
         if (systemAnalysis.results.monthly_ghi) {
             updateChart(
@@ -1555,8 +1568,6 @@ function updateResults(systemAnalysis) {
                 'Wind Speed (m/s)'
             );
         }
-
-
     }
 
     // 3. Financial Charts
