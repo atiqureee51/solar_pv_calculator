@@ -16,6 +16,7 @@ let dailyProductionChart = null;
 let windChart = null;
 let financialChart = null;
 let cashflowChart = null;
+let costBreakdownChart = null;
 
 // Constants
 const DEFAULT_VALUES = {
@@ -384,6 +385,15 @@ function initializeCharts() {
             cashflowChart = createCashflowChart(cashflowCtx);
         }
 
+        // Create cost breakdown chart
+        const costBreakdownCtx = document.getElementById('costBreakdownChart');
+        if (costBreakdownCtx) {
+            if (costBreakdownChart) {
+                costBreakdownChart.destroy();
+            }
+            costBreakdownChart = createCostBreakdownChart(costBreakdownCtx);
+        }
+
     } catch (error) {
         console.error('Error initializing charts:', error);
     }
@@ -496,6 +506,41 @@ function createCashflowChart(canvas) {
                             return '$' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                         }
                     }
+                }
+            }
+        }
+    });
+}
+
+function createCostBreakdownChart(canvas) {
+    return new Chart(canvas, {
+        type: 'pie',
+        data: {
+            labels: [
+                'Modules',
+                'Inverters',
+                'Balance of System',
+                'Installation',
+                'Soft Costs',
+                'Land'
+            ],
+            datasets: [{
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
                 }
             }
         }
@@ -1064,7 +1109,7 @@ function handleCurrencyChange(currency) {
     $('.cost-component').each(function() {
         const baseValue = $(this).data('base-value') || $(this).val();
         $(this).data('base-value', baseValue);
-        $(this).val((baseValue * rate).toFixed(2));
+        $(this).val((baseValue * rate).toFixed(1));
     });
     
     // Update main financial inputs
@@ -1305,60 +1350,39 @@ function calculateTotalInstalledCost() {
     $('#installed_cost').val(displayCost.toFixed(2));
 
     // Update cost breakdown chart
-    const costData = {
-        labels: [
-            'Modules',
-            'Inverters',
-            'Balance of System',
-            'Installation',
-            'Soft Costs',
-            'Land'
-        ],
-        datasets: [{
-            data: [
-                (moduleCost * systemSize * 1000).toFixed(2),
-                (inverterCost * systemSize * 1000).toFixed(2),
-                (bosCost * systemSize * 1000).toFixed(2),
-                (installationCost * systemSize * 1000).toFixed(2),
-                (softCost * systemSize * 1000).toFixed(2),
-                landCost.toFixed(2)
+    if (costBreakdownChart) {
+        const costData = {
+            labels: [
+                'Modules',
+                'Inverters',
+                'Balance of System',
+                'Installation',
+                'Soft Costs',
+                'Land'
             ],
-            backgroundColor: [
-                '#FF6384',
-                '#36A2EB',
-                '#FFCE56',
-                '#4BC0C0',
-                '#9966FF',
-                '#FF9F40'
-            ]
-        }]
-    };
+            datasets: [{
+                data: [
+                    (moduleCost * systemSize * 1000).toFixed(2),
+                    (inverterCost * systemSize * 1000).toFixed(2),
+                    (bosCost * systemSize * 1000).toFixed(2),
+                    (installationCost * systemSize * 1000).toFixed(2),
+                    (softCost * systemSize * 1000).toFixed(2),
+                    landCost.toFixed(2)
+                ],
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40'
+                ]
+            }]
+        };
 
-    // Update or create cost breakdown chart
-    const ctx = document.getElementById('costBreakdownChart').getContext('2d');
-    if (window.costBreakdownChart) {
-        window.costBreakdownChart.destroy();
+        costBreakdownChart.data = costData;
+        costBreakdownChart.update();
     }
-    window.costBreakdownChart = new Chart(ctx, {
-        type: 'pie',
-        data: costData,
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = parseFloat(context.raw);
-                            return `${context.label}: ${symbol}${value.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
 
     // Return the cost breakdown for form submission
     return {
@@ -1403,7 +1427,7 @@ $('#costBreakdownModal').on('show.bs.modal', function () {
     }
     
     calculateTotalInstalledCost();
-});
+})
 
 // Update form data collection to use cost breakdown
 
@@ -1857,6 +1881,22 @@ $('#currency').change(function() {
     }
 })
 
+// Region change handler
+function handleRegionChange(region) {
+    const defaults = getDefaultsForRegion(region);
+    
+    // Update coordinates
+    $('#latitude').val(defaults.lat.toFixed(6));
+    $('#longitude').val(defaults.lon.toFixed(6));
+    
+    // Update help text
+    $('#latitude').next('.form-text').text(`${region} default: ${defaults.lat}° N`);
+    $('#longitude').next('.form-text').text(`${region} default: ${defaults.lon}° E`);
+    
+    // Update map location
+    updateMapLocation();
+}
+
 // House Energy Calculator
 const APPLIANCE_POWER = {
     ac: 1500,        // Watts for typical AC
@@ -2045,3 +2085,51 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 })
+
+
+function initializeCostBreakdownChart() {
+    const ctx = document.getElementById('costBreakdownChart');
+    if (!ctx) return;
+    
+    if (costBreakdownChart) {
+        costBreakdownChart.destroy();
+    }
+    
+    costBreakdownChart = new Chart(ctx.getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: [
+                'Modules',
+                'Inverters',
+                'Balance of System',
+                'Installation',
+                'Soft Costs',
+                'Land'
+            ],
+            datasets: [{
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Initialize charts when document is ready
+$(document).ready(function() {
+    initializeCostBreakdownChart();
+});
