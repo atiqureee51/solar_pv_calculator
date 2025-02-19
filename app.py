@@ -21,65 +21,6 @@ import os
 
 app = Flask(__name__)
 
-# Module cache for better performance
-_module_cache = {
-    'sandia': None,
-    'all_modules': None,
-    'default_module': None
-}
-
-def get_modules():
-    """
-    Get list of Sandia modules.
-    Uses efficient caching and lazy loading for better performance.
-    """
-    if _module_cache['all_modules'] is not None:
-        return _module_cache['all_modules']
-
-    # Load Sandia modules from CSV with optimized reading
-    if _module_cache['sandia'] is None:
-        try:
-            sandia_file = os.path.join('data', 'Sandia Modules.csv')
-            # Only read the Name column for the list
-            _module_cache['sandia'] = pd.read_csv(sandia_file, usecols=['Name'])
-            _module_cache['sandia_processed'] = [name for name in _module_cache['sandia']['Name']]
-        except Exception as e:
-            print(f"Error loading Sandia modules: {e}")
-            _module_cache['sandia'] = pd.DataFrame()
-            _module_cache['sandia_processed'] = []
-
-    # Use Sandia modules only
-    _module_cache['all_modules'] = _module_cache['sandia_processed']
-    
-    # Use SunPower SPR-315E-WHT [2007 (E)] as default (index 474 in Sandia CSV)
-    default_module = None
-    if len(_module_cache['sandia_processed']) > 474:
-        default_module = _module_cache['sandia_processed'][474]
-    
-    # If target module not available, use first available module
-    if default_module is None and len(_module_cache['sandia_processed']) > 0:
-        default_module = _module_cache['sandia_processed'][0]
-    
-    _module_cache['default_module'] = default_module
-    return _module_cache['all_modules']
-
-@app.route('/api/get_modules', methods=['GET'])
-def get_modules_route():
-    try:
-        modules = get_modules()
-        default_module = _module_cache.get('default_module')
-        
-        # Find the index of the default module
-        default_index = modules.index(default_module) if default_module in modules else 0
-        
-        return jsonify({
-            'modules': modules,
-            'default_index': default_index
-        })
-    except Exception as e:
-        print("Error getting modules:", str(e))
-        return jsonify({'error': str(e)}), 500
-
 # ------------- Weather Data Helpers -------------
 def get_psm_url(lon):
     """Select correct NREL PSM3 endpoint based on longitude."""
@@ -401,37 +342,17 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
                         tilt=30, azimuth=180, gcr=0.4):
     try:
         print("Starting PV output calculation...")
-        
-        # Strip the prefix (CEC: or Sandia:) from the module name
-        module_source, module_name = module_name.split(': ', 1) if ': ' in module_name else ('Sandia', module_name)
-        
-        # Get module data from our cache
-        if module_source == 'Sandia':
-            if _module_cache['sandia'] is None:
-                sandia_file = os.path.join('data', 'Sandia Modules.csv')
-                _module_cache['sandia'] = pd.read_csv(sandia_file)
-            module_data = _module_cache['sandia'][_module_cache['sandia']['Name'] == module_name]
-            if len(module_data) == 0:
-                return {"error": f"Module '{module_name}' not found in Sandia database"}
-            module = module_data.iloc[0].to_dict()
-            
-            # Map Sandia parameters to standard format for calculations
-            module.update({
-                'Voco': module['Voco'],
-                'Vmpo': module['Vmpo'],
-                'Impo': module['Impo'],
-                'Isco': module['Isco'],
-                'Aimp': module['Aisc'],
-                'Bvoco': module['Bvoco'],
-                'Bvmpo': module['Bvmpo'],  # Approximate
-                'Area': module['Area']
-            })
-        
-        # Get inverter data
+        mod_db = pvsystem.retrieve_sam('SandiaMod')
         inv_db = pvsystem.retrieve_sam('SandiaInverter')
+        
+        if module_name not in mod_db.columns:
+            print(f"Module '{module_name}' not found in database")
+            return {"error": f"Module '{module_name}' not found in database"}
         if inverter_name not in inv_db.columns:
             print(f"Inverter '{inverter_name}' not found in database")
             return {"error": f"Inverter '{inverter_name}' not found in database"}
+            
+        module = mod_db[module_name].to_dict()
         inverter = inv_db[inverter_name].to_dict()
         
         print("Module and inverter data retrieved successfully")
@@ -467,14 +388,14 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         min_module_series_okay = math.ceil(inverter['Mppt_low'] * dc_ac_ratio / min_module_vmp)
         
         print("Module calculations completed")
-
+        module['STC']=module['Vmpo']*module['Impo']
         # Calculate number of modules based on desired system size
         system_size_w = max(system_size_kw * 1000, 1)  # Minimum 1W
-        modules_needed = math.ceil(system_size_w / max(float(module.get('STC', 0)), 0.1))  # Minimum 0.1W
+        modules_needed = math.ceil(system_size_w / max(module['STC'], 0.1))  # Minimum 0.1W
         
         # Calculate string sizing with safety checks
-        vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
-        voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
+        vmp = max(float(module.get('Vmpo', 0)), 0.1)  # Minimum 0.1V
+        voc = max(float(module.get('Voco', 0)), 0.1)  # Minimum 0.1V
         
         max_modules_per_string = min(
             math.floor(inverter.get('Vdcmax', 600) / vmp),
@@ -482,7 +403,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         )
         
         # Calculate parallel strings
-        imp = max(float(module.get('I_mp_ref', 0)), 0.1)  # Minimum 0.1A
+        imp = max(float(module.get('Impo', 0)), 0.1)  # Minimum 0.1A
         max_parallel_strings = max(1, math.floor(inverter.get('Idcmax', 10) / imp))
         
         # Calculate system configuration
@@ -631,7 +552,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'inverter_type': inverter_name,
             'system_size': system_size_kw,
             'inverter_power': inverter['Paco'],
-            'module_power': max(float(module.get('STC', 0)), 0.1),
+            'module_power': max(module['STC'], 0.1),
             'daily_energy': daily_energy,
             'monthly_energy': monthly_energy,
             'min_design_temp': float(min_db_temp_ashrae),
@@ -666,41 +587,59 @@ def get_module_details(module_name: str):
     Get module details with efficient caching.
     """
     # Strip the prefix (CEC: or Sandia:) from the module name
-    source, name = module_name.split(': ', 1) if ': ' in module_name else ('Sandia', module_name)
+    source, name = module_name.split(': ', 1) if ': ' in module_name else ('CEC', module_name)
     
     try:
-        if source == 'Sandia':
-            if _module_cache['sandia'] is None:
-                sandia_file = os.path.join('data', 'Sandia Modules.csv')
-                _module_cache['sandia'] = pd.read_csv(sandia_file)
-            
-            module_data = _module_cache['sandia'][_module_cache['sandia']['Name'] == name]
-            if len(module_data) == 0:
-                return None
-                
-            row = module_data.iloc[0]
-            return {
-                'name': name,
-                'manufacturer': row.get('Manufacturer', 'Unknown'),
-                'technology': row.get('Material', 'Unknown'),  # Sandia uses Material instead of Technology
-                'bifacial': False,  # Sandia doesn't specify this
-                'stc': float(row.get('STC', 0)),  # STC rating directly from Sandia
-                'ptc': None,  # Sandia doesn't provide PTC
-                'area': float(row.get('Area', 0)),
-                'cells_in_series': int(row.get('Cells in Series', 0)),
-                'i_sc_ref': float(row.get('Isco', 0)),
-                'v_oc_ref': float(row.get('Voco', 0)),
-                'i_mp_ref': float(row.get('Impo', 0)),
-                'v_mp_ref': float(row.get('Vmpo', 0)),
-                'alpha_sc': float(row.get('Aisc', 0)),
-                'beta_oc': float(row.get('Bvoco', 0)),
-                'gamma_pmp': float(row.get('Bvmpo', 0)/row.get('Vmpo', 1)*100 + row.get('Aimp', 0)/row.get('Impo', 1)*100),
-                'cells_in_parallel': int(row.get('Parallel Strings', 1)),
-                'source': source
-            }
+        if source == 'CEC':
+            # Get CEC module database
+            cec_modules = pvsystem.retrieve_sam('CECMod')
+            if name in cec_modules.columns:
+                module = cec_modules[name]
+                return {
+                    'name': name,
+                    'manufacturer': module.get('manufacturer', 'Unknown'),
+                    'technology': module.get('Technology', 'Unknown'),
+                    'bifacial': False,  # CEC database doesn't specify this
+                    'area': float(module.get('A_c', 0)),
+                    'cells_in_series': int(module.get('N_s', 0)),
+                    'i_sc_ref': float(module.get('I_sc_ref', 0)),
+                    'v_oc_ref': float(module.get('V_oc_ref', 0)),
+                    'i_mp_ref': float(module.get('I_mp_ref', 0)),
+                    'v_mp_ref': float(module.get('V_mp_ref', 0)),
+                    'alpha_sc': float(module.get('alpha_sc', 0)),
+                    'beta_oc': float(module.get('beta_oc', 0)),
+                    'gamma_pmp': float(module.get('gamma_r', 0)),
+                    'cells_in_parallel': 1,
+                    'source': source
+                }
+        
+        elif source == 'Sandia':
+            # Get Sandia module database
+            sandia_modules = pvsystem.retrieve_sam('SandiaMod')
+            if name in sandia_modules.columns:
+                module = sandia_modules[name]
+                return {
+                    'name': name,
+                    'manufacturer': module.get('Manufacturer', 'Unknown'),
+                    'technology': module.get('Technology', 'Unknown'),
+                    'bifacial': False,  # Sandia database doesn't specify this
+                    'area': float(module.get('Area', 0)),
+                    'i_sc_ref': float(module.get('Isco', 0)),
+                    'v_oc_ref': float(module.get('Voco', 0)),
+                    'i_mp_ref': float(module.get('Impo', 0)),
+                    'v_mp_ref': float(module.get('Vmpo', 0)),
+                    'alpha_sc': float(module.get('Aisc', 0)),
+                    'beta_oc': float(module.get('Bvoc', 0)),
+                    'gamma_pmp': float(module.get('Bvmpo', 0)/module.get('Vmpo', 1)*100 + module.get('Aimp', 0)/module.get('Impo', 1)*100),
+                    'cells_in_series': module.get('Cells_in_Series', 0),
+                    'cells_in_parallel': 1,
+                    'source': source
+                }
                 
     except Exception as e:
         print(f"Error getting module details: {str(e)}")
+        return None
+    
     return None
 
 def get_inverter_details(inverter_name):
@@ -743,11 +682,13 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
 
     try:
         # Module characteristics with safety checks
-        module_power_w = max(float(module.get('STC', 0)), 0.1)  # Minimum 0.1W
-        vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
-        imp = max(float(module.get('I_mp_ref', 0)), 0.1)  # Minimum 0.1A
-        voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
-        isc = max(float(module.get('I_sc_ref', 0)), 0.1)  # Minimum 0.1A
+        
+        vmp = max(float(module.get('Vmpo', 0)), 0.1)  # Minimum 0.1V
+        imp = max(float(module.get('Impo', 0)), 0.1)  # Minimum 0.1A
+        voc = max(float(module.get('Voco', 0)), 0.1)  # Minimum 0.1V
+        isc = max(float(module.get('Isco', 0)), 0.1)  # Minimum 0.1A
+        m
+        module_power_w = vmp*imp
 
         # Inverter characteristics with safety checks
         inverter_power_w = max(float(inverter.get('Paco', 0)), 0.1)  # Minimum 0.1W
@@ -1037,21 +978,16 @@ def get_location_info(lat, lon):
         }
 
 @app.route('/api/get_modules', methods=['GET'])
-def get_modules_route():
+def get_modules():
     try:
-        modules = get_modules()
-        default_module = _module_cache.get('default_module')
-        
-        # Find the index of the default module
-        default_index = modules.index(default_module) if default_module in modules else 0
-        
-        return jsonify({
-            'modules': modules,
-            'default_index': default_index
-        })
+        mod_db = pvsystem.retrieve_sam('SandiaMod')
+        module_list = mod_db.columns.tolist()
+        print("Total modules:", len(module_list))
+        print("Default module (index 467):", module_list[467])
+        return jsonify({'modules': module_list,'default_index':467})
     except Exception as e:
         print("Error getting modules:", str(e))
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}),500
 
 @app.route('/api/get_inverters', methods=['GET'])
 
