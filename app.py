@@ -203,15 +203,41 @@ def compute_area_of_polygon(latlon_list):
 def calculate_financial_metrics(
     annual_energy, installed_cost, electricity_rate,
     project_life, fed_credit, st_credit,
-    interest_rate, maintenance_cost
+    interest_rate, maintenance_cost, degradation=0.005
 ):
-    """Compute LCOE, payback, etc., ensuring floats are JSON-serializable."""
-    # annual_energy is kWh, so installed_cost is presumably numeric
-    total_capital_cost = installed_cost - (installed_cost * fed_credit) - (installed_cost * st_credit)
-    annual_savings = annual_energy * electricity_rate
+    """
+    Compute LCOE, payback, etc., ensuring floats are JSON-serializable.
     
-    rpwf = (1 - ((1 + interest_rate)**(-project_life))) / interest_rate
-    single_pwf = (1 / ((1 + interest_rate)**project_life))
+    Parameters:
+        annual_energy: float - First year energy production in kWh
+        installed_cost: float - Total installed cost in currency units
+        electricity_rate: float - Cost of electricity in currency units per kWh
+        project_life: int - Project lifetime in years
+        fed_credit: float - Federal tax credit as decimal (e.g., 0.26 for 26%)
+        st_credit: float - State tax credit as decimal
+        interest_rate: float - Annual interest rate as decimal
+        maintenance_cost: float - Annual maintenance cost in currency units
+        degradation: float - Annual panel degradation rate as decimal (default 0.5%)
+    """
+    # Calculate total capital cost after tax credits
+    total_capital_cost = installed_cost - (installed_cost * fed_credit) - (installed_cost * st_credit)
+    
+    # Calculate annual savings with degradation
+    annual_savings = 0
+    total_energy = 0
+    for year in range(project_life):
+        year_degradation = (1 - degradation) ** year
+        year_energy = annual_energy * year_degradation
+        total_energy += year_energy
+        annual_savings += year_energy * electricity_rate
+    
+    # Average annual values
+    avg_annual_energy = total_energy / project_life
+    avg_annual_savings = annual_savings / project_life
+    
+    # Calculate present worth factors
+    rpwf = (1 - ((1 + interest_rate)**(-project_life))) / interest_rate if interest_rate > 0 else project_life
+    single_pwf = (1 / ((1 + interest_rate)**project_life)) if interest_rate > 0 else 1
     
     # Calculate present worth of recurring costs
     recurring_costs_pw = maintenance_cost * rpwf
@@ -219,20 +245,23 @@ def calculate_financial_metrics(
     # Calculate net life cycle cost
     net_lcc_cost = total_capital_cost + recurring_costs_pw
     
-    # Calculate payback period
-    payback = total_capital_cost / annual_savings if annual_savings > 0 else float('inf')
+    # Calculate simple payback period (using first year savings)
+    first_year_savings = annual_energy * electricity_rate
+    payback = total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf')
     
-    fixed_charge_rate = 1 / rpwf
-    lcoe = ((total_capital_cost * fixed_charge_rate) + maintenance_cost) / annual_energy if annual_energy > 0 else 0
+    # Calculate LCOE considering degradation
+    fixed_charge_rate = 1 / rpwf if rpwf > 0 else 1/project_life
+    lcoe = ((total_capital_cost * fixed_charge_rate) + maintenance_cost) / avg_annual_energy if avg_annual_energy > 0 else 0
     
-    co2_savings = (annual_energy * 0.7 / 1000)  # 0.7 kg/kWh => tons
+    # Calculate CO2 savings (using average annual energy)
+    co2_savings = (avg_annual_energy * 0.7 / 1000)  # 0.7 kg/kWh => tons
     
-    # Calculate total 25-year savings (undiscounted)
-    total_savings = annual_savings * project_life - total_capital_cost
+    # Calculate total savings over project life (considering degradation)
+    total_savings = annual_savings - total_capital_cost - (maintenance_cost * project_life)
     
     return {
-        'annual_energy_kwh': float(annual_energy),
-        'annual_savings': float(annual_savings),
+        'annual_energy_kwh': float(avg_annual_energy),
+        'annual_savings': float(avg_annual_savings),
         'simple_payback': float(payback),
         'lcoe': float(lcoe),
         'co2_savings': float(co2_savings),
@@ -1042,7 +1071,6 @@ def calculate():
                 project_life=project_life,
                 installed_cost=max(float(data.get('installed_cost', 80000)), 1),  # Minimum $1
                 maintenance_cost=max(float(data.get('maintenance_cost', 1000)), 0),
-                degradation=max(float(data.get('degradation', 0.5)), 0),
                 price_escalation=max(float(data.get('price_escalation', 2.5)), 0)
             )
         except Exception as e:

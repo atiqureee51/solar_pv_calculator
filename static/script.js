@@ -1248,7 +1248,7 @@ async function handleFormSubmit(event) {
         land_cost: parseFloat($('#land_cost').val()) || 0
     };
 
-    console.log('Form Data:', formData);
+    //console.log('Form Data:', formData);
 
     try {
         const response = await $.ajax({
