@@ -571,68 +571,6 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         # Calculate specific yield (kWh/kWp)
         specific_yield = annual_energy_kwh / system_size_kw if system_size_kw > 0 else 0
 
-        # Calculate financial metrics
-        currency_conversion = {"USD": 1, "BDT": 110}
-        selected_currency = "BDT"
-        rate = currency_conversion[selected_currency]
-
-        # Get component costs from form data with defaults
-        module_cost_per_w = float(data.get('module_cost', 0.35)) * rate
-        inverter_cost_per_w = float(data.get('inverter_cost', 0.10)) * rate
-        bos_cost_per_w = float(data.get('bos_cost', 0.30)) * rate  # Default sum of racking, wiring, disconnect
-        installation_cost_per_w = float(data.get('installation_cost', 0.40)) * rate  # Default sum of labor, overhead, profit
-        soft_cost_per_w = float(data.get('soft_cost', 0.35)) * rate  # Default sum of permitting, inspection, etc.
-
-        # Calculate system size in watts
-        system_size_w = system_size_kw * 1000
-        
-        # Calculate economies of scale factor
-        size_factor = min(1.0, math.log10(system_size_kw) / math.log10(100))
-        
-        # Calculate component costs with scale factors
-        module_cost = system_size_w * module_cost_per_w * (1 - 0.1 * size_factor)
-        inverter_cost = system_size_w * inverter_cost_per_w * (1 - 0.1 * size_factor)
-        bos_cost = system_size_w * bos_cost_per_w * (1 - 0.15 * size_factor)
-        installation_cost = system_size_w * installation_cost_per_w * (1 - 0.2 * size_factor)
-        soft_cost = system_size_w * soft_cost_per_w * (1 - 0.1 * size_factor)
-        
-        # Calculate total installed cost
-        total_installed_cost = module_cost + inverter_cost + bos_cost + installation_cost + soft_cost
-        
-        # Cost breakdown for pie chart
-        cost_breakdown = {
-            'Modules': float(module_cost),
-            'Inverters': float(inverter_cost),
-            'Balance of System': float(bos_cost),
-            'Installation': float(installation_cost),
-            'Soft Costs': float(soft_cost)
-        }
-
-        # Default values for financial calculations
-        defaults = {
-            'electricity_rate': float(data.get('electricity_rate', 0.07)) * rate,  # $0.07/kWh default
-            'maintenance_cost': float(data.get('maintenance_cost', 15)) * rate,    # $15/kW-year default
-            'degradation': float(data.get('degradation', 0.005)),      # 0.5% per year default
-            'price_escalation': float(data.get('price_escalation', 0.025))  # 2.5% per year default
-        }
-        
-        # Calculate financial metrics
-        financial_metrics = calculate_financial_metrics(
-            annual_energy=annual_energy_kwh,
-            installed_cost=total_installed_cost,
-            electricity_rate=defaults['electricity_rate'],
-            maintenance_cost=defaults['maintenance_cost'],
-            project_life=25,
-            fed_credit=0.26,
-            st_credit=0,
-            interest_rate=0.05,
-            degradation=defaults['degradation'],
-            price_escalation=defaults['price_escalation']
-        )
-        
-        # Add cost breakdown to financial metrics
-        financial_metrics['cost_breakdown'] = cost_breakdown
-        
         performance_data = {
             'annual_energy': annual_energy_kwh,  # Use the calculated annual energy
             'peak_dc_power': peak_dc_kW,
@@ -655,19 +593,10 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'module_power': max(float(module.get('STC', 0)), 0.1),
             'daily_energy': daily_energy,
             'monthly_energy': monthly_energy,
-            'lcoe': float(financial_metrics['lcoe']),
-            'npv': float(financial_metrics['net_present_value']),
-            'payback_period': float(financial_metrics['simple_payback']),
-            'cost_breakdown': cost_breakdown,
-            'cumulative_cashflow': [float(x) for x in financial_metrics['cumulative_cashflow']],
-            'annual_cashflow': [float(-total_installed_cost)] + financial_metrics['annual_cashflow'],  
             'min_design_temp': float(min_db_temp_ashrae),
             'max_design_temp': float(max_db_temp_ashrae),
             'effective_irradiance': float(wdf['effective_irradiance'].mean()),
-            'cell_temperature': float(wdf['cell_temperature'].mean()),
-            'monthly_ghi': [float(x) for x in weather['ghi'].resample('M').sum().tolist()],
-            'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],
-            'hourly_wind_speed': [float(x) for x in weather['wind_speed'].tolist()]
+            'cell_temperature': float(wdf['cell_temperature'].mean())
         }
         
         return performance_data
