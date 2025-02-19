@@ -371,10 +371,10 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
         voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
         
-        max_modules_per_string = max(1, min(
+        max_modules_per_string = min(
             math.floor(inverter.get('Vdcmax', 600) / vmp),
             math.floor(inverter.get('Vdcmax', 600) / voc)
-        ))
+        )
         
         # Calculate parallel strings
         imp = max(float(module.get('I_mp_ref', 0)), 0.1)  # Minimum 0.1A
@@ -784,116 +784,130 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
             "error": "Module or inverter information not found"
         }
 
-    # Module characteristics
-    module_power_w = float(module.get('STC', 0))
-    vmp = float(module.get('V_mp_ref', 0))
-    imp = float(module.get('I_mp_ref', 0))
-    voc = float(module.get('V_oc_ref', 0))
-    isc = float(module.get('I_sc_ref', 0))
+    try:
+        # Module characteristics with safety checks
+        module_power_w = max(float(module.get('STC', 0)), 0.1)  # Minimum 0.1W
+        vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
+        imp = max(float(module.get('I_mp_ref', 0)), 0.1)  # Minimum 0.1A
+        voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
+        isc = max(float(module.get('I_sc_ref', 0)), 0.1)  # Minimum 0.1A
 
-    # Inverter characteristics
-    inverter_power_w = float(inverter.get('Paco', 0))  # AC power rating
-    max_input_power = float(inverter.get('Pdco', 0))   # DC power rating
-    mppt_min_v = float(inverter.get('Mppt_low', 0))
-    mppt_max_v = float(inverter.get('Mppt_high', 0))
-    max_idc = float(inverter.get('Idcmax', 0))
+        # Inverter characteristics with safety checks
+        inverter_power_w = max(float(inverter.get('Paco', 0)), 0.1)  # Minimum 0.1W
+        max_input_power = max(float(inverter.get('Pdco', 0)), inverter_power_w)  # Use AC power if DC not specified
+        mppt_min_v = max(float(inverter.get('Mppt_low', 0)), 0.1)  # Minimum 0.1V
+        mppt_max_v = max(float(inverter.get('Mppt_high', mppt_min_v * 2)), mppt_min_v * 2)  # Double min if not specified
+        max_idc = max(float(inverter.get('Idcmax', 0)), 0.1)  # Minimum 0.1A
 
-    # System requirements
-    desired_power_w = system_size_kw * 1000
-    
-    # Calculate optimal number of inverters based on DC power rating
-    min_inverters_dc = math.ceil(desired_power_w / max_input_power)
-    min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))  # Using max DC/AC ratio of 1.3
-    min_inverters = max(min_inverters_dc, min_inverters_ac)
-    
-    # Calculate string sizing
-    temp_coeff_v = float(module.get('Beta_oc', -0.3)) / 100  # Typical value if not provided
-    max_system_voltage = 1000  # Standard max system voltage
-    min_temp = -10  # Design minimum temperature in Celsius
-    max_temp = 75   # Maximum cell temperature in Celsius
-    
-    # Calculate temperature-adjusted voltages
-    voc_max = voc * (1 + temp_coeff_v * (min_temp - 25))
-    voc_min = voc * (1 + temp_coeff_v * (max_temp - 25))
-    vmp_min = vmp * (1 + temp_coeff_v * (max_temp - 25))
-    
-    # Calculate string sizes
-    max_modules_per_string = min(
-        math.floor(mppt_max_v / vmp),
-        math.floor(max_system_voltage / voc_max)
-    )
-    min_modules_per_string = math.ceil(mppt_min_v / vmp_min)
-    
-    if max_modules_per_string < min_modules_per_string:
+        # Validate critical values
+        if module_power_w <= 0 or vmp <= 0 or voc <= 0 or inverter_power_w <= 0:
+            return {
+                "compatible": False,
+                "error": "Invalid module or inverter specifications"
+            }
+
+        # System requirements with safety check
+        system_size_kw = max(float(system_size_kw), 0.1)  # Minimum 0.1 kW
+        desired_power_w = system_size_kw * 1000
+        
+        # Calculate optimal number of inverters based on DC power rating
+        min_inverters_dc = max(1, math.ceil(desired_power_w / max_input_power))
+        min_inverters_ac = max(1, math.ceil(desired_power_w / (inverter_power_w * 1.3)))  # Using max DC/AC ratio of 1.3
+        min_inverters = max(min_inverters_dc, min_inverters_ac)
+        
+        # Calculate string sizing with safety checks
+        temp_coeff_v = max(float(module.get('Beta_oc', -0.3)), -0.5) / 100  # Typical value if not provided
+        max_system_voltage = 1000  # Standard max system voltage
+        min_temp = -10  # Design minimum temperature in Celsius
+        max_temp = 75   # Maximum cell temperature in Celsius
+        
+        # Calculate temperature-adjusted voltages
+        voc_max = voc * (1 + temp_coeff_v * (min_temp - 25))
+        voc_min = voc * (1 + temp_coeff_v * (max_temp - 25))
+        vmp_min = vmp * (1 + temp_coeff_v * (max_temp - 25))
+        
+        # Calculate string sizes with safety checks
+        max_modules_per_string = max(1, min(
+            math.floor(mppt_max_v / vmp) if vmp > 0 else 1,
+            math.floor(max_system_voltage / voc_max) if voc_max > 0 else 1
+        ))
+        min_modules_per_string = max(1, math.ceil(mppt_min_v / vmp_min) if vmp_min > 0 else 1)
+        
+        if max_modules_per_string < min_modules_per_string:
+            return {
+                "compatible": False,
+                "error": "Cannot achieve valid string size with voltage constraints"
+            }
+        
+        # Optimize modules per string for efficiency
+        modules_per_string = max_modules_per_string
+        while modules_per_string > min_modules_per_string:
+            if desired_power_w % (modules_per_string * module_power_w) < module_power_w:
+                break
+            modules_per_string -= 1
+        
+        # Calculate strings per inverter with safety checks
+        max_strings_per_inverter = max(1, min(
+            math.floor(max_input_power / (modules_per_string * module_power_w)) if (modules_per_string * module_power_w) > 0 else 1,
+            math.floor(max_idc / isc) if isc > 0 else 1
+        ))
+        
+        # Calculate total system configuration
+        modules_per_inverter = modules_per_string * max_strings_per_inverter
+        total_modules_needed = max(1, math.ceil(desired_power_w / module_power_w))
+        actual_strings_needed = max(1, math.ceil(total_modules_needed / modules_per_string))
+        
+        # Calculate actual system size and DC/AC ratio with safety checks
+        actual_system_size_w = total_modules_needed * module_power_w
+        actual_system_size_kw = actual_system_size_w / 1000
+        dc_ac_ratio = actual_system_size_w / (min_inverters * inverter_power_w) if (min_inverters * inverter_power_w) > 0 else 999
+        
+        # Initialize warnings and recommendations
+        warnings = []
+        recommendations = []
+        
+        # Check for design issues
+        if dc_ac_ratio > 1.3:
+            warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} exceeds recommended maximum of 1.3")
+            recommendations.append("Consider adding another inverter to reduce DC/AC ratio")
+        elif dc_ac_ratio < 1.1:
+            warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} is below recommended minimum of 1.1")
+            recommendations.append("Consider reducing number of inverters or adding more modules")
+        
+        # Check inverter utilization with safety check
+        inverter_utilization = (actual_system_size_w / min_inverters) / max_input_power if max_input_power > 0 else 0
+        if inverter_utilization < 0.8:
+            warnings.append(f"Inverters will be underutilized at {inverter_utilization:.1%} of rated capacity")
+            recommendations.append("Consider using fewer or smaller inverters for better efficiency")
+        
+        # Calculate cost implications
+        excess_capacity_kw = (min_inverters * inverter_power_w) - desired_power_w/1.2  # Using typical 1.2 DC/AC ratio
+        if excess_capacity_kw > 10:  # If more than 10kW excess capacity
+            warnings.append(f"Configuration has {excess_capacity_kw/1000:.1f}kW excess inverter capacity")
+            recommendations.append("Consider alternative inverter sizes to optimize cost")
+
+        return {
+            "compatible": True,
+            "warnings": warnings,
+            "recommendations": recommendations,
+            "design": {
+                "total_modules_needed": total_modules_needed,
+                "modules_per_string": modules_per_string,
+                "strings_per_inverter": max_strings_per_inverter,
+                "number_of_inverters": min_inverters,
+                "actual_system_size_kw": actual_system_size_kw,
+                "dc_ac_ratio": dc_ac_ratio,
+                "string_voltage_at_min_temp": voc_max * modules_per_string,
+                "string_voltage_at_max_temp": vmp_min * modules_per_string,
+                "total_strings_needed": actual_strings_needed,
+                "inverter_utilization": inverter_utilization
+            }
+        }
+    except Exception as e:
         return {
             "compatible": False,
-            "error": "Cannot achieve valid string size with voltage constraints"
+            "error": f"Error in sizing calculations: {str(e)}"
         }
-    
-    # Optimize modules per string for efficiency
-    modules_per_string = max_modules_per_string
-    while modules_per_string > min_modules_per_string:
-        if desired_power_w % (modules_per_string * module_power_w) < module_power_w:
-            break
-        modules_per_string -= 1
-    
-    # Calculate strings per inverter
-    max_strings_per_inverter = min(
-        math.floor(max_input_power / (modules_per_string * module_power_w)),
-        math.floor(max_idc / isc)
-    )
-    
-    # Calculate total system configuration
-    modules_per_inverter = modules_per_string * max_strings_per_inverter
-    total_modules_needed = math.ceil(desired_power_w / module_power_w)
-    actual_strings_needed = math.ceil(total_modules_needed / modules_per_string)
-    
-    # Calculate actual system size and DC/AC ratio
-    actual_system_size_w = total_modules_needed * module_power_w
-    actual_system_size_kw = actual_system_size_w / 1000
-    dc_ac_ratio = actual_system_size_w / (min_inverters * inverter_power_w)
-    
-    # Initialize warnings and recommendations
-    warnings = []
-    recommendations = []
-    
-    # Check for design issues
-    if dc_ac_ratio > 1.3:
-        warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} exceeds recommended maximum of 1.3")
-        recommendations.append(f"Consider adding another inverter to reduce DC/AC ratio")
-    elif dc_ac_ratio < 1.1:
-        warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} is below recommended minimum of 1.1")
-        recommendations.append(f"Consider reducing number of inverters or adding more modules")
-    
-    # Check inverter utilization
-    inverter_utilization = (actual_system_size_w / min_inverters) / max_input_power
-    if inverter_utilization < 0.8:
-        warnings.append(f"Inverters will be underutilized at {inverter_utilization:.1%} of rated capacity")
-        recommendations.append("Consider using fewer or smaller inverters for better efficiency")
-    
-    # Calculate cost implications
-    excess_capacity_kw = (min_inverters * inverter_power_w) - desired_power_w/1.2  # Using typical 1.2 DC/AC ratio
-    if excess_capacity_kw > 10:  # If more than 10kW excess capacity
-        warnings.append(f"Configuration has {excess_capacity_kw/1000:.1f}kW excess inverter capacity")
-        recommendations.append("Consider alternative inverter sizes to optimize cost")
-    
-    return {
-        "compatible": True,
-        "warnings": warnings,
-        "recommendations": recommendations,
-        "design": {
-            "total_modules_needed": total_modules_needed,
-            "modules_per_string": modules_per_string,
-            "strings_per_inverter": max_strings_per_inverter,
-            "number_of_inverters": min_inverters,
-            "actual_system_size_kw": actual_system_size_kw,
-            "dc_ac_ratio": dc_ac_ratio,
-            "string_voltage_at_min_temp": voc_max * modules_per_string,
-            "string_voltage_at_max_temp": vmp_min * modules_per_string,
-            "total_strings_needed": actual_strings_needed,
-            "inverter_utilization": inverter_utilization
-        }
-    }
 
 @app.route('/api/get_module_details', methods=['GET'])
 def module_details_route():
@@ -938,31 +952,43 @@ def index():
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
-    """
-    Main endpoint for the front-end to post JSON and get results back.
-    """
+    """Main endpoint for the front-end to post JSON and get results back."""
     try:
         data = request.get_json()
         
         # Get basic parameters with safety defaults
         module_name = data.get('module')
         inverter_name = data.get('inverter')
-        system_size = max(float(data.get('system_size', 5.0)), 0.1)  # Minimum 0.1 kW
-        gcr = max(float(data.get('gcr', 0.4)), 0.1)  # Minimum 0.1 GCR
         
+        # Safety check for module and inverter
         if not module_name or not inverter_name:
             return jsonify({
                 "success": False,
                 "error": "Module and inverter must be specified"
             }), 400
-
-        # Check sizing compatibility
-        sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
-        if not sizing_check:
+            
+        # Get module and inverter details
+        module = get_module_details(module_name)
+        inverter = get_inverter_details(inverter_name)
+        
+        if not module or not inverter:
             return jsonify({
                 "success": False,
-                "error": "Could not check sizing compatibility"
+                "error": "Module or inverter information not found"
             }), 400
+            
+        # Get and validate system size with safety defaults
+        try:
+            system_size = max(float(data.get('system_size', 5.0)), 0.1)  # Minimum 0.1 kW
+            gcr = max(float(data.get('gcr', 0.4)), 0.1)  # Minimum 0.1 GCR
+        except (ValueError, TypeError):
+            return jsonify({
+                "success": False,
+                "error": "Invalid system size or GCR value"
+            }), 400
+            
+        # Check sizing compatibility
+        sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
         if not sizing_check.get('compatible', False):
             return jsonify({
                 "success": False,
@@ -973,8 +999,8 @@ def calculate():
         sizing_status = sizing_check
             
         # Build temperature model parameters with defaults
-        temp_model = data.get('temp_model','sapm')
-        mount_type = data.get('mount_type','open_rack_glass_glass')
+        temp_model = data.get('temp_model', 'sapm')
+        mount_type = data.get('mount_type', 'open_rack_glass_glass')
 
         temp_params = TEMPERATURE_MODEL_PARAMETERS.get(temp_model, {}).get(
             mount_type,
@@ -986,7 +1012,7 @@ def calculate():
             **temp_params
         }
 
-        # Calculate PV system performance
+        # Calculate PV system performance with safety checks
         performance_data = calculate_pv_output(
             latitude=float(data.get('latitude', 23.8103)),
             longitude=float(data.get('longitude', 90.4125)),
@@ -999,113 +1025,45 @@ def calculate():
             gcr=gcr
         )
         
-        if 'error' in performance_data:
+        if not performance_data or 'error' in performance_data:
             return jsonify({
                 "success": False,
-                "error": performance_data['error']
+                "error": performance_data.get('error', 'Failed to calculate PV system performance')
             }), 400
 
-        # Rest of your code...
+        # Calculate financial metrics with safety checks
+        electricity_rate = max(float(data.get('electricity_rate', 0.08)), 0.01)  # Minimum $0.01/kWh
+        project_life = max(int(data.get('project_life', 25)), 1)  # Minimum 1 year
         
-        # Calculate financial metrics
-        electricity_rate = float(data.get('electricity_rate', 10.0))
-        project_life = int(data.get('project_life', 25))
-        fed_credit = float(data.get('fed_credit', 0.26))
-        st_credit = float(data.get('st_credit', 0.0))
-        interest_rate = float(data.get('interest_rate', 0.05))
-        maintenance_cost = float(data.get('maintenance_cost', 10.0))
-        
-        # Get costs
-        module_cost = float(data.get('module_cost', 0.5))  # $/W
-        inverter_cost = float(data.get('inverter_cost', 0.1))  # $/W
-        labor_cost = float(data.get('labor_cost', 0.2))  # $/W
-        other_cost = float(data.get('other_cost', 0.2))  # $/W
-        
-        # Calculate total capex
-        total_capex = (module_cost + inverter_cost + labor_cost + other_cost) * system_size * 1000  # Convert to $
-        
-        # Add land cost if provided
-        if 'land_cost' in data and data['land_cost'] > 0:
-            total_capex += data['land_cost']
-        
-        # Get financial metrics
-        financial_metrics = calculate_financial_metrics(
-            performance_data['annual_energy'],
-            total_capex,
-            electricity_rate,
-            project_life,
-            fed_credit,
-            st_credit,
-            interest_rate,
-            maintenance_cost
-        )
-        
-        # Combine all metrics into response
-        response = {
-            'success': True,
-            'system_analysis': {
-                'annual_energy': float(performance_data['annual_energy']),
-                'peak_dc_power': float(performance_data['peak_dc_power']),
-                'peak_ac_power': float(performance_data['peak_ac_power']),
-                'capacity_factor': float(performance_data['capacity_factor']),
-                'performance_ratio': float(performance_data['performance_ratio']),
-                'specific_yield': float(performance_data['specific_yield']),
-                'modules_per_string': performance_data['modules_per_string'],
-                'strings_per_inverter': performance_data['strings_per_inverter'],
-                'number_of_inverters': performance_data['number_of_inverters'],
-                'dc_ac_ratio': performance_data['dc_ac_ratio'],
-                'total_module_area': performance_data['total_module_area'],
-                'module_area': performance_data['module_area'],
-                'module_type': module_name,
-                'total_modules': performance_data['total_modules'],
-                'inverter_type': inverter_name,
-                'system_size': system_size,
-                'inverter_power': performance_data['inverter_power'],
-                'module_power': performance_data['module_power'],
-                'daily_energy': performance_data['daily_energy'],
-                'monthly_energy': performance_data['monthly_energy']
-            },
-            'financial_metrics': {
-                'annual_savings': performance_data['annual_energy'] * data.get('electricity_rate', 0.08),
-                'simple_payback': performance_data['payback_period'],
-                'lcoe': performance_data['lcoe'],
-                'co2_savings': (performance_data['annual_energy'] * 0.7 / 1000),  # 0.7 kg/kWh => tons
-                'net_present_value': performance_data['npv'],
-                'total_savings': performance_data['annual_energy'] * data.get('electricity_rate', 0.08) * data.get('project_life', 25)
-            },
-            'weather_data': {
-                'monthly_ghi': performance_data['monthly_ghi'],
-                'monthly_temperature': performance_data['monthly_temperature'],
-                'monthly_energy': performance_data['monthly_energy'],
-                'hourly_wind_speed': performance_data['hourly_wind_speed']
-            },
-            'location_info': get_location_info(
-                data.get('latitude', 23.8103),
-                data.get('longitude', 90.4125)
-            ),
-            'financials': {
-                'lcoe': performance_data['lcoe'],
-                'npv': performance_data['npv'],
-                'payback_period': performance_data['payback_period'],
-                'cost_breakdown': performance_data['cost_breakdown'],
-                'cumulative_cashflow': [float(x) for x in performance_data['cumulative_cashflow']],
-                'annual_cashflow': [float(-total_capex)] + performance_data['annual_cashflow'],  # Include initial investment
-                'min_design_temp': float(performance_data['min_design_temp']),
-                'max_design_temp': float(performance_data['max_design_temp']),
-                'effective_irradiance': float(performance_data['effective_irradiance']),
-                'cell_temperature': float(performance_data['cell_temperature']),
-                'monthly_ghi': [float(x) for x in performance_data['monthly_ghi']],
-                'monthly_temperature': [float(x) for x in performance_data['monthly_temperature']],
-                'hourly_wind_speed': [float(x) for x in performance_data['hourly_wind_speed']]
-            },
-            'sizing_status': sizing_status
-        }
-        print("Response prepared:", response)  # Debug log
-        return jsonify(response)
-        
+        try:
+            financial_metrics = calculate_financial_metrics(
+                performance_data['annual_energy'],
+                electricity_rate=electricity_rate,
+                project_life=project_life,
+                installed_cost=max(float(data.get('installed_cost', 80000)), 1),  # Minimum $1
+                maintenance_cost=max(float(data.get('maintenance_cost', 1000)), 0),
+                degradation=max(float(data.get('degradation', 0.5)), 0),
+                price_escalation=max(float(data.get('price_escalation', 2.5)), 0)
+            )
+        except Exception as e:
+            return jsonify({
+                "success": False,
+                "error": f"Financial calculation error: {str(e)}"
+            }), 400
+
+        return jsonify({
+            "success": True,
+            "system_analysis": performance_data,
+            "financial_metrics": financial_metrics,
+            "sizing_status": sizing_status
+        })
+
     except Exception as e:
-        print(f"Error in calculate: {str(e)}")  # Debug log
-        return jsonify({"success": False, "error": str(e)}), 400
+        print(f"Error in calculate route: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 400
 
 
 def get_location_info(lat, lon):
