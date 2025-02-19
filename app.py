@@ -583,58 +583,32 @@ def calculate_area_from_system_size(system_size_kw, module_power_w=400, ground_c
     return area_m2
 
 def get_module_details(module_name: str):
-    """
-    Get module details with efficient caching.
-    """
-    # Strip the prefix (CEC: or Sandia:) from the module name
-    source, name = module_name.split(': ', 1) if ': ' in module_name else ('CEC', module_name)
-    
+    """Get module details from Sandia database."""
     try:
-        if source == 'CEC':
-            # Get CEC module database
-            cec_modules = pvsystem.retrieve_sam('CECMod')
-            if name in cec_modules.columns:
-                module = cec_modules[name]
-                return {
-                    'name': name,
-                    'manufacturer': module.get('manufacturer', 'Unknown'),
-                    'technology': module.get('Technology', 'Unknown'),
-                    'bifacial': False,  # CEC database doesn't specify this
-                    'area': float(module.get('A_c', 0)),
-                    'cells_in_series': int(module.get('N_s', 0)),
-                    'i_sc_ref': float(module.get('I_sc_ref', 0)),
-                    'v_oc_ref': float(module.get('V_oc_ref', 0)),
-                    'i_mp_ref': float(module.get('I_mp_ref', 0)),
-                    'v_mp_ref': float(module.get('V_mp_ref', 0)),
-                    'alpha_sc': float(module.get('alpha_sc', 0)),
-                    'beta_oc': float(module.get('beta_oc', 0)),
-                    'gamma_pmp': float(module.get('gamma_r', 0)),
-                    'cells_in_parallel': 1,
-                    'source': source
-                }
-        
-        elif source == 'Sandia':
-            # Get Sandia module database
-            sandia_modules = pvsystem.retrieve_sam('SandiaMod')
-            if name in sandia_modules.columns:
-                module = sandia_modules[name]
-                return {
-                    'name': name,
-                    'manufacturer': module.get('Manufacturer', 'Unknown'),
-                    'technology': module.get('Technology', 'Unknown'),
-                    'bifacial': False,  # Sandia database doesn't specify this
-                    'area': float(module.get('Area', 0)),
-                    'i_sc_ref': float(module.get('Isco', 0)),
-                    'v_oc_ref': float(module.get('Voco', 0)),
-                    'i_mp_ref': float(module.get('Impo', 0)),
-                    'v_mp_ref': float(module.get('Vmpo', 0)),
-                    'alpha_sc': float(module.get('Aisc', 0)),
-                    'beta_oc': float(module.get('Bvoc', 0)),
-                    'gamma_pmp': float(module.get('Bvmpo', 0)/module.get('Vmpo', 1)*100 + module.get('Aimp', 0)/module.get('Impo', 1)*100),
-                    'cells_in_series': module.get('Cells_in_Series', 0),
-                    'cells_in_parallel': 1,
-                    'source': source
-                }
+        # Get module from Sandia database
+        sandia_modules = pvsystem.retrieve_sam('SandiaMod')
+        if module_name in sandia_modules.columns:
+            module = sandia_modules[module_name]
+            # Calculate STC power from Vmpo and Impo
+            stc_power = float(module['Vmpo'] * module['Impo'])
+            
+            return {
+                'name': module_name,
+                'manufacturer': module.get('Manufacturer', 'Unknown'),
+                'technology': module.get('Material', 'Unknown'),
+                'area': float(module['Area']),
+                'cells_in_series': int(module.get('Cells in Series', 0)),
+                'i_sc_ref': float(module['Isco']),
+                'v_oc_ref': float(module['Voco']),
+                'i_mp_ref': float(module['Impo']),
+                'v_mp_ref': float(module['Vmpo']),
+                'alpha_sc': float(module['Aisc']),
+                'beta_oc': float(module['Bvoco']),
+                'gamma_pmp': float(module['Bvmpo']/module['Vmpo']*100 + module['Aimp']/module['Impo']*100),
+                'cells_in_parallel': 1,
+                'source': 'Sandia',
+                'STC': stc_power  # Add STC power
+            }
                 
     except Exception as e:
         print(f"Error getting module details: {str(e)}")
@@ -979,6 +953,7 @@ def get_location_info(lat, lon):
 
 @app.route('/api/get_modules', methods=['GET'])
 def get_modules():
+    """Get list of all available modules."""
     try:
         mod_db = pvsystem.retrieve_sam('SandiaMod')
         module_list = mod_db.columns.tolist()
