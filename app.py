@@ -364,34 +364,40 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         print("Module calculations completed")
 
         # Calculate number of modules based on desired system size
-        total_power_needed = system_size_kw * 1000  # Convert kW to W
-        total_modules_needed = math.ceil(total_power_needed / single_module_power)
+        total_power_needed = max(system_size_kw * 1000, 1)  # Convert kW to W, minimum 1W to prevent division by zero
+        total_modules_needed = math.ceil(total_power_needed / single_module_power) if single_module_power > 0 else 1
         
-        # Calculate optimal string configuration
+        # Calculate optimal string configuration with safety checks
         max_modules_per_string = min(
-            math.floor(inverter['Vdcmax'] / module['Vmpo']),
-            math.floor(inverter['Vdcmax'] / module['Voco'])
+            max(1, math.floor(inverter['Vdcmax'] / max(module['Vmpo'], 1))),
+            max(1, math.floor(inverter['Vdcmax'] / max(module['Voco'], 1)))
         )
-        min_modules_per_string = math.ceil(inverter['Mppt_low'] / module['Vmpo'])
+        min_modules_per_string = max(1, math.ceil(inverter['Mppt_low'] / max(module['Vmpo'], 1)))
         
-        # Choose optimal number of modules per string
+        # Choose optimal number of modules per string with safety checks
         modules_per_string = min(max_modules_per_string, 
                                max(min_modules_per_string, 
-                                   math.ceil(math.sqrt(total_modules_needed))))
+                                   math.ceil(math.sqrt(max(total_modules_needed, 1)))))
         
-        # Calculate number of parallel strings needed
-        parallel_strings = math.ceil(total_modules_needed / modules_per_string)
-        max_parallel_strings = math.floor(inverter['Idcmax'] / module['Impo'])
+        # Calculate maximum strings per inverter with safety checks
+        max_strings_per_inverter = max(1, min(
+            math.floor(inverter['Idcmax'] / max(module['Impo'], 0.1)),
+            math.floor(inverter['Pdco'] / max(modules_per_string * single_module_power, 1))
+        ))
         
-        # If we need more strings than the inverter can handle, use multiple inverters
-        num_inverters = math.ceil(parallel_strings / max_parallel_strings)
-        parallel_strings_per_inverter = min(parallel_strings // num_inverters, max_parallel_strings)
+        # Calculate total system configuration
+        modules_per_inverter = modules_per_string * max_strings_per_inverter
+        total_modules_needed = math.ceil(total_power_needed / max(single_module_power, 1))
+        actual_strings_needed = math.ceil(total_modules_needed / max(modules_per_string, 1))
         
-        # Recalculate actual number of modules to match desired system size as closely as possible
-        actual_modules = modules_per_string * parallel_strings_per_inverter * num_inverters
+        # Calculate actual system size and DC/AC ratio with safety checks
+        actual_system_size_w = total_modules_needed * single_module_power
+        actual_system_size_kw = actual_system_size_w / 1000
+        num_inverters_needed = math.ceil(actual_strings_needed / max(max_strings_per_inverter, 1))
         
-        # Calculate actual DC system size
-        dc_system_size = (single_module_power * actual_modules) / 1000  # kW
+        # Prevent division by zero in DC/AC ratio calculation
+        inverter_ac_power = max(inverter['Paco'], 0.1)  # Minimum 0.1W to prevent division by zero
+        dc_ac_ratio = actual_system_size_w / (inverter_ac_power * num_inverters_needed)
         
         location_obj = location.Location(latitude, longitude, 'Etc/GMT', altitude=0)
         
@@ -464,7 +470,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             module_parameters=module,
             temperature_model_parameters=temperature_model_parameters,
             modules_per_string=modules_per_string,
-            strings=parallel_strings_per_inverter
+            strings=max_strings_per_inverter
         )
         system_obj = pvsystem.PVSystem(
             arrays=[array],
@@ -494,21 +500,34 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         monthly_energy = [float(x) for x in ac_annual_series.resample('M').sum().tolist()]
 
         # Calculate annual energy and power values
-        annual_energy_mwh = (ac_annual_series.sum()*num_inverters)/1e6
+        annual_energy_mwh = (ac_annual_series.sum()*math.ceil(actual_strings_needed / max_strings_per_inverter))/1e6
         peak_ac = ac_annual_series.max()
         peak_dc = dc_annual_series.max()
         
         annual_energy_kwh = float(annual_energy_mwh*1000)
-        peak_ac_kW = float((peak_ac/1000)*num_inverters)
-        peak_dc_kW = float((peak_dc/1000)*num_inverters)
+        peak_ac_kW = float((peak_ac/1000)*math.ceil(actual_strings_needed / max_strings_per_inverter))
+        peak_dc_kW = float((peak_dc/1000)*math.ceil(actual_strings_needed / max_strings_per_inverter))
 
         # Calculate performance metrics as before...
         poa_wh_m2=(env_data['poa_global'])
         poa_sum=poa_wh_m2.resample('Y').sum().values[0]
-        Reference_Yield=poa_sum/1000
-        Final_Yield=(annual_energy_kwh/(single_module_power*modules_per_string*parallel_strings_per_inverter*num_inverters))*1000
-        performance_ratio=Final_Yield/Reference_Yield
-        capacity_factor=((annual_energy_kwh)/(single_module_power*modules_per_string*parallel_strings_per_inverter*num_inverters*8760))*1000
+        if poa_sum > 0:
+            Reference_Yield = poa_sum/1000
+            Final_Yield = (annual_energy_kwh/(single_module_power*modules_per_string*max_strings_per_inverter*math.ceil(actual_strings_needed / max_strings_per_inverter)))*1000
+            performance_ratio = Final_Yield/Reference_Yield
+        else:
+            Reference_Yield = 0
+            Final_Yield = 0
+            performance_ratio = 0
+            
+        # Calculate capacity factor with zero check
+        total_possible_hours = 8760  # hours in a year
+        rated_power = single_module_power*modules_per_string*max_strings_per_inverter*math.ceil(actual_strings_needed / max_strings_per_inverter)
+        if rated_power > 0:
+            capacity_factor = ((annual_energy_kwh)/rated_power*1000/total_possible_hours)
+        else:
+            capacity_factor = 0
+            
         specific_yield = float(annual_energy_kwh / system_size_kw if system_size_kw > 0 else 0)
 
         # Calculate financial metrics
@@ -670,13 +689,13 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'capacity_factor': capacity_factor,
             'specific_yield': specific_yield,
             'modules_per_string': int(modules_per_string),
-            'strings_per_inverter': int(parallel_strings_per_inverter),
-            'number_of_inverters': int(num_inverters),
+            'strings_per_inverter': int(max_strings_per_inverter),
+            'number_of_inverters': int(math.ceil(actual_strings_needed / max_strings_per_inverter)),
             'dc_ac_ratio': float(dc_ac_ratio),
-            'total_module_area': float(module['Area'] * modules_per_string * parallel_strings_per_inverter * num_inverters),
+            'total_module_area': float(module['Area'] * modules_per_string * max_strings_per_inverter * math.ceil(actual_strings_needed / max_strings_per_inverter)),
             'module_area': float(module['Area']),
             'module_type': module_name,
-            'total_modules': int(modules_per_string * parallel_strings_per_inverter * num_inverters),
+            'total_modules': int(modules_per_string * max_strings_per_inverter * math.ceil(actual_strings_needed / max_strings_per_inverter)),
             'inverter_type': inverter_name,
             'system_size': system_size_kw,
             'inverter_power': inverter['Paco'],
@@ -936,53 +955,68 @@ def calculate():
     try:
         data = request.get_json()
         
-        # Get basic parameters
+        # Get basic parameters with safety defaults
         module_name = data.get('module')
         inverter_name = data.get('inverter')
-        system_size = float(data.get('system_size', 5.0))
-        gcr = float(data.get('gcr', 0.4))  # Default GCR of 0.4
-        land_cost = float(data.get('land_cost', 0))  # Default land cost of 0
+        system_size = max(float(data.get('system_size', 5.0)), 0.1)  # Minimum 0.1 kW
+        gcr = max(float(data.get('gcr', 0.4)), 0.1)  # Minimum 0.1 GCR
         
+        if not module_name or not inverter_name:
+            return jsonify({
+                "success": False,
+                "error": "Module and inverter must be specified"
+            }), 400
+
         # Check sizing compatibility
         sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
         if not sizing_check:
-            return jsonify({"success": False, "error": "Could not check sizing"}), 400
-        if sizing_check['compatible'] == False:
-            return jsonify({"success": False, "error": sizing_check['error']}), 400
+            return jsonify({
+                "success": False,
+                "error": "Could not check sizing compatibility"
+            }), 400
+        if not sizing_check.get('compatible', False):
+            return jsonify({
+                "success": False,
+                "error": sizing_check.get('error', 'Incompatible system sizing')
+            }), 400
             
         # Store sizing status for response
         sizing_status = sizing_check
             
-        # temperature model
+        # Build temperature model parameters with defaults
         temp_model = data.get('temp_model','sapm')
         mount_type = data.get('mount_type','open_rack_glass_glass')
 
-        # Build parameters
-        if temp_model == 'pvsyst':
-            temp_params = TEMPERATURE_MODEL_PARAMETERS['pvsyst'].get(
-                mount_type, {'u_c': 29.0, 'u_v':0.0}
-            )
-        else:
-            temp_params = TEMPERATURE_MODEL_PARAMETERS['sapm'].get(
-                mount_type, {'a': -3.56,'b':-0.075,'deltaT':3}
-            )
+        temp_params = TEMPERATURE_MODEL_PARAMETERS.get(temp_model, {}).get(
+            mount_type,
+            {'a': -3.56, 'b': -0.075, 'deltaT': 3} if temp_model == 'sapm' else {'u_c': 29.0, 'u_v': 0.0}
+        )
+        
         temperature_model_parameters = {
             'model': temp_model,
             **temp_params
         }
 
-        # do performance
+        # Calculate PV system performance
         performance_data = calculate_pv_output(
-            latitude=data.get('latitude',23.8103),
-            longitude=data.get('longitude',90.4125),
+            latitude=float(data.get('latitude', 23.8103)),
+            longitude=float(data.get('longitude', 90.4125)),
             system_size_kw=system_size,
             module_name=module_name,
             inverter_name=inverter_name,
             temperature_model_parameters=temperature_model_parameters,
-            tilt=data.get('tilt',30),
-            azimuth=data.get('azimuth',180),
+            tilt=float(data.get('tilt', 30)),
+            azimuth=float(data.get('azimuth', 180)),
             gcr=gcr
         )
+        
+        if 'error' in performance_data:
+            return jsonify({
+                "success": False,
+                "error": performance_data['error']
+            }), 400
+
+        # Rest of your code...
         
         # Calculate financial metrics
         electricity_rate = float(data.get('electricity_rate', 10.0))
@@ -1002,8 +1036,8 @@ def calculate():
         total_capex = (module_cost + inverter_cost + labor_cost + other_cost) * system_size * 1000  # Convert to $
         
         # Add land cost if provided
-        if land_cost > 0:
-            total_capex += land_cost
+        if 'land_cost' in data and data['land_cost'] > 0:
+            total_capex += data['land_cost']
         
         # Get financial metrics
         financial_metrics = calculate_financial_metrics(
@@ -1171,18 +1205,41 @@ def get_api_config():
 
 @app.route('/calculate_house_energy', methods=['POST'])
 def calculate_house_energy():
-    data = request.get_json()
-    daily_kwh = data.get('daily_kwh', 0)
-    peak_sun_hours = data.get('peak_sun_hours', 4)  # Default 4 hours
-    system_losses = 0.2  # 20% losses
+    try:
+        data = request.get_json()
+        daily_kwh = float(data.get('daily_kwh', 0))
+        peak_sun_hours = float(data.get('peak_sun_hours', 4))  # Default 4 hours
+        system_losses = 0.2  # 20% losses
 
-    recommended_size = (daily_kwh / peak_sun_hours) * (1 + system_losses)
-    
-    return jsonify({
-        'recommended_size_kw': round(recommended_size, 2),
-        'daily_energy_kwh': round(daily_kwh, 2),
-        'annual_energy_kwh': round(daily_kwh * 365, 2)
-    })
+        if peak_sun_hours <= 0:
+            return jsonify({
+                'success': False,
+                'error': 'Peak sun hours must be greater than 0'
+            }), 400
+
+        recommended_size = (daily_kwh / peak_sun_hours) * (1 + system_losses)
+        
+        return jsonify({
+            'success': True,
+            'recommended_size_kw': round(recommended_size, 2),
+            'daily_energy_kwh': round(daily_kwh, 2),
+            'annual_energy_kwh': round(daily_kwh * 365, 2)
+        })
+    except ZeroDivisionError:
+        return jsonify({
+            'success': False,
+            'error': 'Peak sun hours cannot be zero'
+        }), 400
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Invalid value: {str(e)}'
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 400
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
