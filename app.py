@@ -19,11 +19,6 @@ from geopy.geocoders import Nominatim
 import io
 import os
 
-
-
-
-
-
 app = Flask(__name__)
 
 # Constants (same as before)
@@ -762,73 +757,135 @@ def get_inverter_details(inverter_name):
         print(f"Error getting inverter details: {str(e)}")
     return None
 
-
-
 def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
     """
-    Check if the module-inverter pair can handle the desired system size.
-    PV System Design Logic:
-    1. Calculate inverters needed based on DC rating
-    2. Check if total DC capacity would be too much above desired size
-    3. Warn if configuration would require significantly more modules/space than desired
+    Professional PV System Design Logic:
+    1. Start with desired DC system size
+    2. Consider inverter configurations that minimize excess capacity
+    3. Calculate optimal string configurations
+    4. Verify voltage and current limits
+    5. Ensure DC/AC ratio stays within 1.1-1.3 range
+    6. Provide detailed design recommendations
     """
-    try:
-        mod_db = pvsystem.retrieve_sam('SandiaMod')
-        inv_db = pvsystem.retrieve_sam('SandiaInverter')
-        if module_name not in mod_db.columns:
-            return {"status":"error","message":f"Module {module_name} not found"}
-        if inverter_name not in inv_db.columns:
-            return {"status":"error","message":f"Inverter {inverter_name} not found"}
-            
-        module = mod_db[module_name]
-        inverter = inv_db[inverter_name]
-        
-        # Get inverter specs
-        ac_rating_w = float(inverter['Paco'])  # AC output rating
-        dc_rating_w = float(inverter['Pdco'])  # DC input rating
-        desired_dc_w = system_size_kw * 1000
-        
-        # Check if system size is appropriate for this inverter
-        if desired_dc_w < 0.4 * ac_rating_w:
-            return {
-                "status": "warning",
-                "message": f"System size {system_size_kw}kW is too small for {inverter_name} ({ac_rating_w/1000:.1f}kW). Consider using a smaller inverter."
-            }
-            
-        # Calculate number of inverters needed based on DC rating
-        inverter_ratio = desired_dc_w / dc_rating_w
-        num_inverters = math.ceil(inverter_ratio)
-        
-        # Calculate system capacities with this many inverters
-        total_ac_capacity = num_inverters * ac_rating_w
-        total_dc_capacity = num_inverters * dc_rating_w
-        
-        print(f"\nDEBUG check_sizing:")
-        print(f"Desired DC: {system_size_kw}kW ({desired_dc_w}W)")
-        print(f"Inverter AC: {ac_rating_w}W, DC: {dc_rating_w}W")
-        print(f"Inverters needed: {inverter_ratio:.2f} → {num_inverters}")
-        print(f"Total AC capacity: {total_ac_capacity/1000:.1f}kW")
-        print(f"Total DC capacity: {total_dc_capacity/1000:.1f}kW")
-        
-        # Check if configuration makes sense
-        if total_dc_capacity > desired_dc_w * 1.15:  # Allow 15% overhead
-            return {
-                "status": "warning",
-                "message": f"Using {num_inverters} inverters would require {total_dc_capacity/1000:.1f}kW DC capacity, {((total_dc_capacity/desired_dc_w)-1)*100:.0f}% more than desired {system_size_kw}kW. Consider a larger inverter to reduce space requirements."
-            }
-        elif inverter_ratio > 1.5:
-            return {
-                "status": "warning",
-                "message": f"Desired {system_size_kw}kW is too large for {inverter_name} ({dc_rating_w/1000:.1f}kW DC). Would need {math.ceil(inverter_ratio)} inverters. Consider a larger inverter."
-            }
-        else:
-            return {
-                "status": "ok",
-                "message": f"System works well with {num_inverters} x {inverter_name}. Each inverter: {ac_rating_w/1000:.1f}kW AC, {dc_rating_w/1000:.1f}kW DC. Total capacity needed: {desired_dc_w/1000:.1f}kW."
-            }
-            
-    except Exception as e:
-        return {"status":"error","message":f"Error checking sizing: {str(e)}"}
+    module = get_module_details(module_name)
+    inverter = get_inverter_details(inverter_name)
+    
+    if not module or not inverter:
+        return {
+            "compatible": False,
+            "error": "Module or inverter information not found"
+        }
+
+    # Module characteristics
+    module_power_w = float(module.get('STC', 0))
+    vmp = float(module.get('V_mp_ref', 0))
+    imp = float(module.get('I_mp_ref', 0))
+    voc = float(module.get('V_oc_ref', 0))
+    isc = float(module.get('I_sc_ref', 0))
+
+    # Inverter characteristics
+    inverter_power_w = float(inverter.get('Paco', 0))  # AC power rating
+    max_input_power = float(inverter.get('Pdco', 0))   # DC power rating
+    mppt_min_v = float(inverter.get('Mppt_low', 0))
+    mppt_max_v = float(inverter.get('Mppt_high', 0))
+    max_idc = float(inverter.get('Idcmax', 0))
+
+    # System requirements
+    desired_power_w = system_size_kw * 1000
+    
+    # Calculate optimal number of inverters based on DC power rating
+    min_inverters_dc = math.ceil(desired_power_w / max_input_power)
+    min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))  # Using max DC/AC ratio of 1.3
+    min_inverters = max(min_inverters_dc, min_inverters_ac)
+    
+    # Calculate string sizing
+    temp_coeff_v = float(module.get('Beta_oc', -0.3)) / 100  # Typical value if not provided
+    max_system_voltage = 1000  # Standard max system voltage
+    min_temp = -10  # Design minimum temperature in Celsius
+    max_temp = 75   # Maximum cell temperature in Celsius
+    
+    # Calculate temperature-adjusted voltages
+    voc_max = voc * (1 + temp_coeff_v * (min_temp - 25))
+    voc_min = voc * (1 + temp_coeff_v * (max_temp - 25))
+    vmp_min = vmp * (1 + temp_coeff_v * (max_temp - 25))
+    
+    # Calculate string sizes
+    max_modules_per_string = min(
+        math.floor(mppt_max_v / vmp),
+        math.floor(max_system_voltage / voc_max)
+    )
+    min_modules_per_string = math.ceil(mppt_min_v / vmp_min)
+    
+    if max_modules_per_string < min_modules_per_string:
+        return {
+            "compatible": False,
+            "error": "Cannot achieve valid string size with voltage constraints"
+        }
+    
+    # Optimize modules per string for efficiency
+    modules_per_string = max_modules_per_string
+    while modules_per_string > min_modules_per_string:
+        if desired_power_w % (modules_per_string * module_power_w) < module_power_w:
+            break
+        modules_per_string -= 1
+    
+    # Calculate strings per inverter
+    max_strings_per_inverter = min(
+        math.floor(max_input_power / (modules_per_string * module_power_w)),
+        math.floor(max_idc / isc)
+    )
+    
+    # Calculate total system configuration
+    modules_per_inverter = modules_per_string * max_strings_per_inverter
+    total_modules_needed = math.ceil(desired_power_w / module_power_w)
+    actual_strings_needed = math.ceil(total_modules_needed / modules_per_string)
+    
+    # Calculate actual system size and DC/AC ratio
+    actual_system_size_w = total_modules_needed * module_power_w
+    actual_system_size_kw = actual_system_size_w / 1000
+    dc_ac_ratio = actual_system_size_w / (min_inverters * inverter_power_w)
+    
+    # Initialize warnings and recommendations
+    warnings = []
+    recommendations = []
+    
+    # Check for design issues
+    if dc_ac_ratio > 1.3:
+        warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} exceeds recommended maximum of 1.3")
+        recommendations.append(f"Consider adding another inverter to reduce DC/AC ratio")
+    elif dc_ac_ratio < 1.1:
+        warnings.append(f"DC/AC ratio of {dc_ac_ratio:.2f} is below recommended minimum of 1.1")
+        recommendations.append(f"Consider reducing number of inverters or adding more modules")
+    
+    # Check inverter utilization
+    inverter_utilization = (actual_system_size_w / min_inverters) / max_input_power
+    if inverter_utilization < 0.8:
+        warnings.append(f"Inverters will be underutilized at {inverter_utilization:.1%} of rated capacity")
+        recommendations.append("Consider using fewer or smaller inverters for better efficiency")
+    
+    # Calculate cost implications
+    excess_capacity_kw = (min_inverters * inverter_power_w) - desired_power_w/1.2  # Using typical 1.2 DC/AC ratio
+    if excess_capacity_kw > 10:  # If more than 10kW excess capacity
+        warnings.append(f"Configuration has {excess_capacity_kw/1000:.1f}kW excess inverter capacity")
+        recommendations.append("Consider alternative inverter sizes to optimize cost")
+    
+    return {
+        "compatible": True,
+        "warnings": warnings,
+        "recommendations": recommendations,
+        "design": {
+            "total_modules_needed": total_modules_needed,
+            "modules_per_string": modules_per_string,
+            "strings_per_inverter": max_strings_per_inverter,
+            "number_of_inverters": min_inverters,
+            "actual_system_size_kw": actual_system_size_kw,
+            "dc_ac_ratio": dc_ac_ratio,
+            "string_voltage_at_min_temp": voc_max * modules_per_string,
+            "string_voltage_at_max_temp": vmp_min * modules_per_string,
+            "total_strings_needed": actual_strings_needed,
+            "inverter_utilization": inverter_utilization
+        }
+    }
 
 @app.route('/api/get_module_details', methods=['GET'])
 def module_details_route():
@@ -890,8 +947,8 @@ def calculate():
         sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
         if not sizing_check:
             return jsonify({"success": False, "error": "Could not check sizing"}), 400
-        if sizing_check['status'] == 'error':
-            return jsonify({"success": False, "error": sizing_check['message']}), 400
+        if sizing_check['compatible'] == False:
+            return jsonify({"success": False, "error": sizing_check['error']}), 400
             
         # Store sizing status for response
         sizing_status = sizing_check
@@ -1045,14 +1102,6 @@ def get_location_info(lat, lon):
             'city': '-',
             'country': '-'
         }
-
-
-
-
-
-
-
-
 
 @app.route('/api/get_modules', methods=['GET'])
 def get_modules():
