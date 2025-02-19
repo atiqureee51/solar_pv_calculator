@@ -886,8 +886,15 @@ def calculate():
         soft_cost = cost_breakdown.get('softCost', 0.275)
         land_cost = cost_breakdown.get('landCost', 0)
 
-        # Get temperature model parameters based on system type
-        temp_model_params = SYSTEM_TYPE_DEFAULTS.get(system_type, SYSTEM_TYPE_DEFAULTS['ground-mounted'])
+        # Get temperature model parameters from request or system type defaults
+        temp_model = data.get('temperature_model')
+        if temp_model:
+            temp_model_params = {
+                'model': temp_model,
+                'type': data.get('sapm_type') if temp_model == 'sapm' else data.get('pvsyst_type')
+            }
+        else:
+            temp_model_params = SYSTEM_TYPE_DEFAULTS.get(system_type, SYSTEM_TYPE_DEFAULTS['ground-mounted'])
         
         # Calculate PV system output
         system_output = calculate_pv_output(

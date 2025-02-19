@@ -1285,6 +1285,10 @@ async function handleFormSubmit(event) {
             maintenance_cost: parseFloat($('#maintenance_cost').val()),
             degradation: parseFloat($('#degradation').val()) / 100,
             price_escalation: parseFloat($('#price_escalation').val()) / 100,
+            // Include temperature model parameters
+            temperature_model: $('#temperature-model').val(),
+            sapm_type: $('#sapm-type').val(),
+            pvsyst_type: $('#pvsyst-type').val(),
             // Include cost breakdown
             cost_breakdown: costBreakdown
         };
@@ -1645,22 +1649,8 @@ function updateResults(systemAnalysis) {
                 options: {
                     responsive: true,
                     plugins: {
-                        title: {
-                            display: true,
-                            text: 'Project Cost Breakdown'
-                        },
                         legend: {
                             position: 'right'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${context.label}: ${symbol}${value.toFixed(2)} (${percentage}%)`;
-                                }
-                            }
                         }
                     }
                 }
