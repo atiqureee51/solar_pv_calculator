@@ -1448,9 +1448,9 @@ function updateResults(systemAnalysis) {
     //$('#avg-wind').text(`${systemAnalysis.results.avg_wind_speed.toFixed(1)} m/s`);
 
     // Calculate weather averages
-    const monthlyGHI = systemAnalysis.weather_data.monthly_ghi || [];
-    const monthlyTemp = systemAnalysis.weather_data.monthly_temperature || [];
-    const monthlyWind = systemAnalysis.weather_data.monthly_wind_speed || [];
+    const monthlyGHI = systemAnalysis.results.monthly_ghi || [];
+    const monthlyTemp = systemAnalysis.results.monthly_temperature || [];
+    const monthlyWind = systemAnalysis.results.monthly_wind_speed || [];
     
     const annualGHI = monthlyGHI.reduce((a, b) => a + b, 0);
     const avgTemp = monthlyTemp.length > 0 ? monthlyTemp.reduce((a, b) => a + b, 0) / monthlyTemp.length : 0;
