@@ -561,7 +561,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'effective_irradiance': float(wdf['effective_irradiance'].mean()),
             'monthly_ghi': [float(x) for x in weather['ghi'].resample('M').mean().tolist()],  # Changed to monthly average
             'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],  # Changed to monthly average
-            'hourly_wind_speed': [float(x) for x in weather['wind_speed'].tolist()],
+            'monthly_wind_speed': [float(x) for x in weather['wind_speed'].resample('M').mean().tolist()],
             'cell_temperature': float(wdf['cell_temperature'].mean())
         }
         
