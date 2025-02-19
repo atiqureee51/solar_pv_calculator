@@ -1427,6 +1427,7 @@ function updateResults(systemAnalysis) {
 
     // ---------- System Info -----------
     $('#total-modules').text(systemAnalysis.results.total_modules);
+    $('#module-power').text(systemAnalysis.results.module_power.toFixed(2) + ' W');
     $('#modules-series').text(systemAnalysis.results.modules_per_string);
     $('#parallel-strings').text(systemAnalysis.results.strings_per_inverter);
     $('#inverter-count').text(systemAnalysis.results.number_of_inverters);
