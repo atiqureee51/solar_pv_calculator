@@ -1419,6 +1419,12 @@ function updateResults(systemAnalysis) {
     $('#payback-period').text(systemAnalysis.results.payback_period.toFixed(1) + ' yrs');
     $('#co2-savings').text(systemAnalysis.results.co2_savings.toFixed(1) + ' tons');
 
+    // ---------- MIDDLE DASHBOARD ----------
+    $('#total-savings25').text(symbol + (systemAnalysis.results.annual_savings * 25).toFixed(0));
+    $('#system-size-display').text(systemAnalysis.results.system_size.toFixed(1) + ' kW');
+    $('#dashboard-lcoe').text(symbol + systemAnalysis.results.lcoe.toFixed(2) + '/kWh');
+    $('#system-area').text(systemAnalysis.results.total_module_area.toFixed(1) + ' m²');
+
     // ---------- System Info -----------
     $('#total-modules').text(systemAnalysis.results.total_modules);
     $('#modules-series').text(systemAnalysis.results.modules_per_string);
@@ -1429,12 +1435,15 @@ function updateResults(systemAnalysis) {
     $('#inverter-type').text(systemAnalysis.results.inverter_type);
 
     // ---------- Site Information -----------
-    const lat = $('#latitude').val();
-    const lon = $('#longitude').val();
-    $('#site-location').text(`${lat}, ${lon}`);
-    $('#site-city').text(systemAnalysis.city || '-');
-    $('#site-country').text(systemAnalysis.country || '-');
-    
+    const lat = parseFloat($('#latitude').val());
+    const lon = parseFloat($('#longitude').val());
+    $('#site-location').text(`${lat.toFixed(4)}°, ${lon.toFixed(4)}°`);
+    $('#site-city').text(systemAnalysis.results.city || '-');
+    $('#site-country').text(systemAnalysis.results.country || '-');
+    $('#annual-ghi').text(`${systemAnalysis.results.annual_ghi.toFixed(0)} kWh/m²`);
+    $('#avg-temp').text(`${systemAnalysis.results.avg_temperature.toFixed(1)}°C`);
+    $('#avg-wind').text(`${systemAnalysis.results.avg_wind_speed.toFixed(1)} m/s`);
+
     // Calculate weather averages
     const monthlyGHI = systemAnalysis.weather_data.monthly_ghi || [];
     const monthlyTemp = systemAnalysis.weather_data.monthly_temperature || [];
@@ -1662,6 +1671,11 @@ function updateResults(systemAnalysis) {
             }
         }
     }
+    
+    // ---------- Status Message -----------
+    $('#status-message').removeClass('d-none alert-danger alert-success')
+        .addClass('alert-success')
+        .text('Calculation completed successfully!');
 }
 
 // Utility
