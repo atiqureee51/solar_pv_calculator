@@ -666,10 +666,14 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
         system_size_kw = max(float(system_size_kw), 0.1)  # Minimum 0.1 kW
         desired_power_w = system_size_kw * 1000
         
-        # Calculate optimal number of inverters based on DC power rating
-        min_inverters_dc = max(1, math.ceil(desired_power_w / max_input_power))
-        min_inverters_ac = max(1, math.ceil(desired_power_w / (inverter_power_w * 1.3)))  # Using max DC/AC ratio of 1.3
-        min_inverters = max(min_inverters_dc, min_inverters_ac)
+        # Use a single inverter if it can handle the power with DC/AC ratio <= 1.3
+        if desired_power_w <= (max_input_power) and desired_power_w <= (inverter_power_w * 1.3):
+            min_inverters = 1
+        else:
+            # Calculate minimum inverters needed based on both DC and AC ratings
+            min_inverters_dc = math.ceil(desired_power_w / max_input_power)
+            min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))  # Using max DC/AC ratio of 1.3
+            min_inverters = max(min_inverters_dc, min_inverters_ac)
         
         # Calculate string sizing with safety checks
         temp_coeff_v = max(float(module.get('Beta_oc', -0.3)), -0.5) / 100  # Typical value if not provided
