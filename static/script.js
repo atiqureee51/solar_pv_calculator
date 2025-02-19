@@ -1556,14 +1556,7 @@ function updateResults(systemAnalysis) {
             );
         }
 
-        // Update weather summary values
-        const annualGHI = systemAnalysis.weather_data.monthly_ghi.reduce((a, b) => a + b, 0);
-        const avgTemp = systemAnalysis.weather_data.monthly_temperature.reduce((a, b) => a + b, 0) / 12;
-        const avgWind = systemAnalysis.weather_data.monthly_wind_speed.reduce((a, b) => a + b, 0) / 12;
 
-        $('#annual-ghi').text(`${annualGHI.toFixed(0)} kWh/m²`);
-        $('#avg-temp').text(`${avgTemp.toFixed(1)}°C`);
-        $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
     }
 
     // 3. Financial Charts
