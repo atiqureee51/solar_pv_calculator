@@ -420,103 +420,25 @@ function createCashflowChart(canvas) {
     });
 }
 
-// Initialize everything
-$(document).ready(function() {
-    try {
-        // Get initial region before any initialization
-        const initialRegion = $('#region').val();
-        const defaults = getDefaultsForRegion(initialRegion);
-        
-        // Set initial coordinates
-        $('#latitude').val(defaults.lat.toFixed(6));
-        $('#longitude').val(defaults.lon.toFixed(6));
-        
-        // Update help text
-        $('#latitude').next('.form-text').text(`${initialRegion} default: ${defaults.lat}° N`);
-        $('#longitude').next('.form-text').text(`${initialRegion} default: ${defaults.lon}° E`);
-        
-        // Make panel fields read-only
-        $('#region, #system-size, #currency').prop('readonly', true);
-        
-        // Initialize form and controls first
-        initializeForm();
-        setupQuickControls();
-        setupEventListeners();
-
-        
-        // Initialize components with correct defaults
-        initializeMap();
-        initializeCharts();
-        //initializeCollapse();
-        loadModulesAndInverters();
-
-        $('#region').change(function() {
-            const region = $(this).val();
-            const defaults = getDefaultsForRegion(region);
-            
-            // Update map and marker
-            if (map) {
-                map.setView([defaults.lat, defaults.lon], defaults.zoom);
-                marker.setLatLng([defaults.lat, defaults.lon]);
-            }
-            
-            // Update form values
-            $('#latitude').val(defaults.lat.toFixed(6));
-            $('#longitude').val(defaults.lon.toFixed(6));
-        });
-        
-        $('#currency').change(function() {
-            handleCurrencyChange($(this).val());
-        });
-        
-        // Initialize sizing method
-        $('#sizing-method').change(handleSizingMethodChange);
-        handleSizingMethodChange();
-        // Handle system size input
-        $('#system-size').on('input', function() {
-                if ($('#sizing-method').val() === 'system-size') {
-                    const systemSize = parseFloat($(this).val());
-                    if (!isNaN(systemSize)) {
-                        const moduleArea = 2.0;  // m²
-                        const gcr = parseFloat($('#gcr').val()) || 0.4;
-                        const area = (systemSize * 1000 / 400) * moduleArea / gcr;
-                        $('#area').val(area.toFixed(2));
-                    }
-                }
-        });
-        // Trigger initial handlers
-        handleRegionChange($('#region').val());
-        handleCurrencyChange($('#currency').val());
-
-        // Show initial status
-        $('#status-message')
-            .removeClass('d-none alert-danger')
-            .addClass('alert-info')
-            .text('Ready to calculate. Fill in the details and click Calculate.');
-            
-        // Store initial currency values
-        const rate = 110; // BDT to USD
-        $('.cost-component').each(function() {
-            const bdtValue = parseFloat($(this).val());
-            $(this).data('base-value', bdtValue / rate);
-        });
-        
-        ['#installed_cost', '#maintenance_cost', '#electricity_rate'].forEach(field => {
-            const bdtValue = parseFloat($(field).val());
-            $(this).data('base-value', bdtValue / rate);
-        });
-        
-    } catch (error) {
-        console.error('Initialization error:', error);
-        showError('Failed to initialize the application. Please refresh the page.');
-    }
-});
-
-
-
-
-
-
+// Initialize calculator
+function initializeCalculator() {
+    // Initialize form elements
+    initializeForm();
+    initializeCostComponents();
+    initializeLocation();
+    loadModulesAndInverters();
+    setupEventListeners();
+    setupQuickAccessControls();
+    setupQuickControls();
+    
+    // Setup initial values
+    updateSystemType();
+    updateSizingMethod();
+    updateCostBreakdown();
+    
+    // Load API configuration
+    loadAPIConfig();
+}
 
 // Event listeners
 function setupEventListeners() {
@@ -978,12 +900,6 @@ function setupQuickControls() {
     });
 }
 
-
-
-
-
-
-
 // Currency handling
 function handleCurrencyChange(currency) {
     const rate = (currency === 'BDT') ? 110 : 1/110; // BDT to USD rate
@@ -1008,13 +924,6 @@ function handleCurrencyChange(currency) {
     const symbol = currency === 'BDT' ? '৳' : '$';
     $('.currency-symbol').text(symbol);
 }
-
-
-
-
-
-
-
 
 // Drawing
 function handleDrawCreated(e) {
@@ -2031,7 +1940,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 })
 
-
 // Handle region change
 function handleRegionChange(region) {
     const defaults = getDefaultsForRegion(region);
@@ -2053,7 +1961,6 @@ function handleRegionChange(region) {
         $('#currency').val('USD').trigger('change');
     }
 }
-
 
 // House Energy Calculator
 const APPLIANCE_POWER = {
@@ -2137,3 +2044,7 @@ function calculateTotalEnergy() {
     const recommendedSize = (totalKwh / 4) * 1.2;
     document.getElementById('recommended-system-size').textContent = recommendedSize.toFixed(2) + ' kW';
 }
+
+$(document).ready(function() {
+    initializeCalculator();
+});

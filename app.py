@@ -813,8 +813,8 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
     desired_power_w = system_size_kw * 1000
     
     # Calculate optimal number of inverters based on DC power rating
-    min_inverters_dc = math.ceil(desired_power_w / max_input_power)
-    min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))  # Using max DC/AC ratio of 1.3
+    min_inverters_dc = math.ceil(desired_power_w / max(max_input_power, 0.1))  # Prevent division by zero
+    min_inverters_ac = math.ceil(desired_power_w / max(inverter_power_w * 1.3, 0.1))  # Using max DC/AC ratio of 1.3
     min_inverters = max(min_inverters_dc, min_inverters_ac)
     
     # Calculate string sizing
