@@ -1512,9 +1512,9 @@ function updateResults(systemAnalysis) {
     $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
 
     // ---------- Financial Metrics -----------
-    $('#lcoe-value').text(symbol + systemAnalysis.financial_metrics.lcoe.toFixed(3) + '/kWh');
-    $('#npv-value').text(symbol + systemAnalysis.financial_metrics.npv.toFixed(0));
-    $('#payback-value').text(systemAnalysis.financial_metrics.payback_period.toFixed(1) + ' years');
+    $('#lcoe-value').text(symbol + systemAnalysis.lcoe.toFixed(3) + '/kWh');
+    $('#npv-value').text(symbol + systemAnalysis.npv.toFixed(0));
+    $('#payback-value').text(systemAnalysis.simple_payback.toFixed(1) + ' years');
 
     // ---------- Area Information -----------
     $('#total-area').text(`${systemAnalysis.system_output.total_module_area.toFixed(2)} m²`);
@@ -1608,7 +1608,7 @@ function updateResults(systemAnalysis) {
                     existingChart.destroy();
                 }
 
-                new Chart(ctx, {
+                new Chart(ctx.getContext('2d'), {
                     type: 'pie',
                     data: {
                         labels: Object.keys(costData),
@@ -1648,7 +1648,7 @@ function updateResults(systemAnalysis) {
                     existingChart.destroy();
                 }
 
-                new Chart(ctx, {
+                new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: Array.from(

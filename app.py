@@ -934,11 +934,11 @@ def calculate():
             'success': True,
             'system_output': system_output,
             'financial_metrics': financial_metrics,
-            'weather_data': weather_data,  # Use the processed weather_data
+            'weather_data': weather_data,
             'annual_savings': financial_metrics['annual_savings'],
             'lcoe': financial_metrics['lcoe'],
             'simple_payback': financial_metrics['payback_period'],
-            'co2_savings': financial_metrics['co2_savings'],
+            'co2_savings': financial_metrics['co2_savings'],  # Make sure this is calculated
             'city': '-',
             'country': '-'
         }
