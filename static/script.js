@@ -1600,6 +1600,138 @@ function updateResults(systemAnalysis) {
     $('#dc-ac-ratio').text(systemAnalysis.system_output.dc_ac_ratio.toFixed(2));
     $('#module-type').text(systemAnalysis.system_output.module_type);
 
+    // ---------- Temp & Irradiance -----
+    if (systemAnalysis.system_output.min_design_temp !== undefined && systemAnalysis.system_output.max_design_temp !== undefined) {
+        $('#min-design-temp').text(systemAnalysis.system_output.min_design_temp.toFixed(1));
+        $('#max-design-temp').text(systemAnalysis.system_output.max_design_temp.toFixed(1));
+    }
+    if (systemAnalysis.system_output.effective_irradiance !== undefined) {
+        $('#effective-irradiance').text(systemAnalysis.system_output.effective_irradiance.toFixed(1));
+    }
+    if (systemAnalysis.system_output.cell_temperature !== undefined) {
+        $('#cell-temperature').text(systemAnalysis.system_output.cell_temperature.toFixed(1));
+    }
+
+    // ---------- Financial -------------
+    if (systemAnalysis.financial_metrics) {
+        $('#lcoe-value').text(symbol + `${systemAnalysis.financial_metrics.lcoe.toFixed(3)}/kWh`);
+        $('#npv-value').text(symbol + `${systemAnalysis.financial_metrics.npv.toFixed(2)}`);
+        $('#payback-value').text(`${systemAnalysis.financial_metrics.payback_period.toFixed(1)} years`);
+
+        // Update cost breakdown pie chart
+        if (systemAnalysis.financial_metrics.cost_breakdown) {
+            const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+            let existingChart = Chart.getChart('costBreakdownChart');
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            const costData = systemAnalysis.financial_metrics.cost_breakdown;
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(costData),
+                    datasets: [{
+                        data: Object.values(costData),
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)',
+                            'rgba(153, 102, 255, 0.8)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Project Cost Breakdown'
+                        },
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: ${symbol}${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update cashflow chart
+        if (systemAnalysis.financial_metrics.cumulative_cashflow) {
+            const ctx = document.getElementById('cashflow-chart').getContext('2d');
+            let existingChart = Chart.getChart('cashflow-chart');
+            if (existingChart) {
+                existingChart.destroy();
+            }
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: systemAnalysis.financial_metrics.cumulative_cashflow.length}, (_, i) => `Year ${i}`),
+                    datasets: [{
+                        label: 'Cumulative Cash Flow',
+                        data: systemAnalysis.financial_metrics.cumulative_cashflow,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Project Timeline'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Cumulative Cash Flow'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return symbol + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Project Cash Flow Over Time'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    return `Cash Flow: ${symbol}${value.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // ---------- Weather charts --------
+    if (systemAnalysis.weather_data) {
+        updateWeatherCharts(systemAnalysis.weather_data);
+    }
+
     // Update energy production charts
     if (systemAnalysis.system_output.monthly_energy) {
         const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
