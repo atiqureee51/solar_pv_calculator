@@ -1406,27 +1406,27 @@ function updateResults(systemAnalysis) {
     const symbol = currency === 'BDT' ? '৳' : '$';
 
     // Update system performance metrics with units
-    $('#peak-dc').text(`${systemAnalysis.system_output.peak_dc_power.toFixed(2)} kW`);
-    $('#peak-ac').text(`${systemAnalysis.system_output.peak_ac_power.toFixed(2)} kW`);
-    $('#capacity-factor').text(`${(systemAnalysis.system_output.capacity_factor * 100).toFixed(1)}%`);
-    $('#performance-ratio').text(`${(systemAnalysis.system_output.performance_ratio * 100).toFixed(1)}%`);
-    $('#annual-energy').text(`${systemAnalysis.system_output.annual_energy.toFixed(0)} kWh`);
-    $('#specific-yield').text(`${systemAnalysis.system_output.specific_yield.toFixed(0)} kWh/kWp`);
+    $('#peak-dc').text(`${systemAnalysis.results.peak_dc_power.toFixed(2)} kW`);
+    $('#peak-ac').text(`${systemAnalysis.results.peak_ac_power.toFixed(2)} kW`);
+    $('#capacity-factor').text(`${(systemAnalysis.results.capacity_factor * 100).toFixed(1)}%`);
+    $('#performance-ratio').text(`${(systemAnalysis.results.performance_ratio * 100).toFixed(1)}%`);
+    $('#annual-energy').text(`${systemAnalysis.results.annual_energy.toFixed(0)} kWh`);
+    $('#specific-yield').text(`${systemAnalysis.results.specific_yield.toFixed(0)} kWh/kWp`);
     
     // ---------- TOP DASHBOARD ----------
-    $('#total-production').text(systemAnalysis.system_output.annual_energy.toFixed(0) + ' kWh');
+    $('#total-production').text(systemAnalysis.results.annual_energy.toFixed(0) + ' kWh');
     $('#cost-savings').text(symbol + systemAnalysis.annual_savings.toFixed(0));
     $('#payback-period').text(systemAnalysis.simple_payback.toFixed(1) + ' yrs');
     $('#co2-savings').text(systemAnalysis.co2_savings.toFixed(1) + ' tons');
 
     // ---------- System Info -----------
-    $('#total-modules').text(systemAnalysis.system_output.total_modules);
-    $('#modules-series').text(systemAnalysis.system_output.modules_per_string);
-    $('#parallel-strings').text(systemAnalysis.system_output.strings_per_inverter);
-    $('#inverter-count').text(systemAnalysis.system_output.number_of_inverters);
-    $('#dc-ac-ratio').text(systemAnalysis.system_output.dc_ac_ratio.toFixed(2));
-    $('#module-type').text(systemAnalysis.system_output.module_type);
-    $('#inverter-type').text(systemAnalysis.system_output.inverter_type);
+    $('#total-modules').text(systemAnalysis.results.total_modules);
+    $('#modules-series').text(systemAnalysis.results.modules_per_string);
+    $('#parallel-strings').text(systemAnalysis.results.strings_per_inverter);
+    $('#inverter-count').text(systemAnalysis.results.number_of_inverters);
+    $('#dc-ac-ratio').text(systemAnalysis.results.dc_ac_ratio.toFixed(2));
+    $('#module-type').text(systemAnalysis.results.module_type);
+    $('#inverter-type').text(systemAnalysis.results.inverter_type);
 
     // ---------- Site Information -----------
     const lat = $('#latitude').val();
@@ -1449,36 +1449,57 @@ function updateResults(systemAnalysis) {
     $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
 
     // ---------- Financial Metrics -----------
-    $('#lcoe-value').text(symbol + systemAnalysis.lcoe.toFixed(3) + '/kWh');
-    $('#npv-value').text(symbol + systemAnalysis.npv.toFixed(0));
-    $('#payback-value').text(systemAnalysis.simple_payback.toFixed(1) + ' years');
-
-    // ---------- Area Information -----------
-    $('#total-area').text(`${systemAnalysis.system_output.total_module_area.toFixed(2)} m²`);
-    $('#module-area').text(`${systemAnalysis.system_output.module_area.toFixed(2)} m²`);
-    $('#possible-modules').text(systemAnalysis.system_output.total_modules);
+    $('#lcoe-value').text(symbol + systemAnalysis.results.lcoe.toFixed(2) + '/kWh');
+    $('#npv-value').text(symbol + systemAnalysis.results.npv.toFixed(0));
+    $('#payback-value').text(systemAnalysis.results.payback_period.toFixed(1) + ' years');
+    
+    // Update cost breakdown chart
+    if (costBreakdownChart) {
+        costBreakdownChart.data.datasets[0].data = [
+            systemAnalysis.results.module_cost,
+            systemAnalysis.results.inverter_cost,
+            systemAnalysis.results.bos_cost,
+            systemAnalysis.results.installation_cost,
+            systemAnalysis.results.soft_cost
+        ];
+        costBreakdownChart.update();
+    }
+    
+    // Update cashflow chart
+    if (systemAnalysis.results.cashflow) {
+        const years = Array.from({length: systemAnalysis.results.cashflow.length}, (_, i) => i);
+        updateChart(
+            'cashflow-chart',
+            years,
+            systemAnalysis.results.cashflow,
+            'Cumulative Cash Flow',
+            'Year',
+            symbol + ' (thousands)',
+            true
+        );
+    }
 
     // ---------- Update Charts -----------
     const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     // 1. Production Charts
-    if (systemAnalysis.system_output.monthly_energy) {
+    if (systemAnalysis.results.monthly_energy) {
         updateChart(
             'monthly-production-chart',
             monthlyLabels,
-            systemAnalysis.system_output.monthly_energy,
+            systemAnalysis.results.monthly_energy,
             'Monthly Energy Production',
             'Month',
             'Energy (kWh)'
         );
     }
 
-    if (systemAnalysis.system_output.daily_energy) {
+    if (systemAnalysis.results.daily_energy) {
         const dailyLabels = Array.from({length: 365}, (_, i) => i + 1);
         updateChart(
             'daily-production-chart',
             dailyLabels,
-            systemAnalysis.system_output.daily_energy,
+            systemAnalysis.results.daily_energy,
             'Daily Energy Production',
             'Day of Year',
             'Energy (kWh)'
@@ -1564,7 +1585,7 @@ function updateResults(systemAnalysis) {
                         responsive: true,
                         plugins: {
                             legend: {
-                                position: 'right'
+                                position: 'bottom'
                             },
                             title: {
                                 display: true,
