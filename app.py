@@ -221,11 +221,15 @@ def calculate_financial_metrics(
         
         lcoe = discounted_cost / discounted_energy if discounted_energy > 0 else float('inf')
         
+        # Calculate CO2 savings (using EPA average of 0.7 kg CO2/kWh)
+        co2_savings = (annual_energy * 0.7 / 1000)  # Convert to metric tons
+        
         return {
             'annual_savings': float(first_year_savings),
             'payback_period': float(payback_period),
             'lcoe': float(lcoe),
             'npv': float(npv),
+            'co2_savings': float(co2_savings),
             'cashflow': [float(x) for x in cumulative_cashflow]
         }
         
@@ -236,6 +240,7 @@ def calculate_financial_metrics(
             'payback_period': float('inf'),
             'lcoe': float('inf'),
             'npv': 0.0,
+            'co2_savings': 0.0,
             'cashflow': [0.0]
         }
 
@@ -313,7 +318,7 @@ def get_cell_temperature(env_data, weather, params):
 
 def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
                         inverter_name, temperature_model_parameters,
-                        tilt=30, azimuth=180, gcr=0.4):
+                        tilt=30, azimuth=180, gcr=0.4, weather=None):
     try:
         print("Starting PV output calculation...")
         mod_db = pvsystem.retrieve_sam('SandiaMod')
@@ -331,8 +336,11 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         
         print("Module and inverter data retrieved successfully")
         
-        weather, metadata = get_weather_data(latitude, longitude)
-        print("Weather data retrieved successfully")
+        if weather is None:
+            weather, metadata = get_weather_data(latitude, longitude)
+            print("Weather data retrieved successfully")
+        else:
+            weather = weather
         
         # ASHRAE data
         ashrae_data = fetch_ashrae_design_data(latitude, longitude)
@@ -367,60 +375,44 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         system_size_w = max(system_size_kw * 1000, 1)  # Minimum 1W
         modules_needed = math.ceil(system_size_w / max(module['STC'], 0.1))  # Minimum 0.1W
         
-        # Calculate string sizing with safety checks
-        vmp = max(float(module.get('Vmpo', 0)), 0.1)  # Minimum 0.1V
-        voc = max(float(module.get('Voco', 0)), 0.1)  # Minimum 0.1V
-        
-        max_modules_per_string = min(
-            math.floor(inverter.get('Vdcmax', 600) / vmp),
-            math.floor(inverter.get('Vdcmax', 600) / voc)
-        )
-        
-        # Calculate parallel strings
-        imp = max(float(module.get('Impo', 0)), 0.1)  # Minimum 0.1A
-        max_parallel_strings = max(1, math.floor(inverter.get('Idcmax', 10) / imp))
-        
-        # Calculate system configuration
-        modules_per_inverter = max_modules_per_string * max_parallel_strings
-        num_inverters_needed = max(1, math.ceil(modules_needed / modules_per_inverter))
-        
-        # Calculate actual system size and DC/AC ratio
-        actual_system_size_w = modules_needed * module['STC']
-        actual_system_size_kw = actual_system_size_w / 1000
-        dc_ac_ratio = actual_system_size_w / (num_inverters_needed * inverter['Paco'])
-        
-        # Calculate optimal number of inverters
+        # Calculate optimal number of inverters based on desired system size
         desired_power_w = system_size_kw * 1000
-        inverter_power_w = float(inverter.get('Paco', 0))
-        max_input_power = float(inverter.get('Pdco', inverter_power_w))
+        
+        # Calculate number of inverters needed (round up to nearest whole number)
+        # Using 1.3 as maximum DC/AC ratio
+        num_inverters = math.ceil(desired_power_w / (float(inverter['Paco']) * 1.3))
+        
+        # Calculate maximum modules per string based on voltage limits
+        max_modules_per_string = int(float(inverter['Vdcmax']) / float(module['Voco']))
+        min_modules_per_string = math.ceil(float(inverter['Mppt_low']) / float(module['Vmp']))
+        
+        # Use optimal modules per string within limits
+        modules_per_string = min(max_modules_per_string, 
+                               max(min_modules_per_string, 
+                                   int((float(inverter['Vdcmax']) + float(inverter['Mppt_low'])) / (2 * float(module['Vmp'])))))
 
-        # Use a single inverter if it can handle the power with DC/AC ratio <= 1.3
-        if desired_power_w <= max_input_power and desired_power_w <= (inverter_power_w * 1.3):
-            num_inverters = 1
-        else:
-            # Calculate minimum inverters needed based on both DC and AC ratings
-            min_inverters_dc = math.ceil(desired_power_w / max_input_power)
-            min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))
-            num_inverters = max(min_inverters_dc, min_inverters_ac)
-
-        # Create array of inverters
-        inverters = [inverter] * num_inverters
-
-        # Calculate power per inverter
-        power_per_inverter = system_size_kw * 1000 / num_inverters
+        # Calculate maximum parallel strings per inverter based on power
+        max_parallel_strings = int(float(inverter['Pdco']) / (float(module['STC']) * modules_per_string))
+        
+        # Calculate actual system specifications
+        modules_per_inverter = modules_per_string * max_parallel_strings
+        total_modules = modules_per_inverter * num_inverters
+        actual_system_size_w = total_modules * float(module['STC'])
+        actual_system_size_kw = actual_system_size_w / 1000
+        dc_ac_ratio = actual_system_size_w / (num_inverters * float(inverter['Paco']))
 
         # Create array of identical systems
         systems = []
-        for inv in inverters:
+        for _ in range(num_inverters):
             system = {
                 'module_parameters': module,
-                'inverter_parameters': inv,
+                'inverter_parameters': inverter,
                 'temperature_model_parameters': temperature_model_parameters,
-                'modules_per_string': max_modules_per_string,
+                'modules_per_string': modules_per_string,
                 'strings': max_parallel_strings
             }
             systems.append(system)
-
+            
         location_obj = location.Location(latitude, longitude, 'Etc/GMT', altitude=0)
         
         if 'air_temperature' not in weather.columns:
@@ -491,7 +483,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             mount=pvsystem.FixedMount(surface_tilt=tilt, surface_azimuth=azimuth),
             module_parameters=module,
             temperature_model_parameters=temperature_model_parameters,
-            modules_per_string=max_modules_per_string,
+            modules_per_string=modules_per_string,
             strings=max_parallel_strings
         )
 
@@ -549,7 +541,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'module_area': float(module['Area']),
             'total_module_area': float(module['Area'] * modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'total_modules': int(modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
-            'modules_per_string': max_modules_per_string,
+            'modules_per_string': modules_per_string,
             'strings_per_inverter': max_parallel_strings,
             'number_of_inverters': num_inverters,
             'actual_system_size_kw': float(system_size_kw),
@@ -557,8 +549,8 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'module_type': module_name,
             'inverter_type': inverter_name,
             'system_size': system_size_kw,
-            'inverter_power': inverter['Paco']/1000,
-            'module_power': max(module['STC'], 0.1),
+            'inverter_power': float(inverter['Paco'])/1000,
+            'module_power': float(module['STC']),
             'daily_energy': daily_energy,
             'monthly_energy': monthly_energy,
             'min_design_temp': float(min_db_temp_ashrae),

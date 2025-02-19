@@ -1465,6 +1465,14 @@ function updateResults(systemAnalysis) {
     $('#npv-value').text(symbol + systemAnalysis.results.npv.toFixed(0));
     $('#payback-value').text(systemAnalysis.results.payback_period.toFixed(1) + ' years');
     
+    // Update system size display
+    const desiredSystemSize = document.getElementById('desired-system-size');
+    const actualSystemSize = document.getElementById('actual-system-size');
+    if (desiredSystemSize && actualSystemSize) {
+        desiredSystemSize.textContent = systemAnalysis.inputs.system_size.toFixed(2) + ' kW';
+        actualSystemSize.textContent = systemAnalysis.results.actual_system_size_kw.toFixed(2) + ' kW';
+    }
+
     // Update cost breakdown chart
     if (costBreakdownChart) {
         costBreakdownChart.data.datasets[0].data = [
@@ -1476,7 +1484,7 @@ function updateResults(systemAnalysis) {
         ];
         costBreakdownChart.update();
     }
-    
+
     // Update cashflow chart
     if (systemAnalysis.results.cashflow) {
         const years = Array.from({length: systemAnalysis.results.cashflow.length}, (_, i) => i);
