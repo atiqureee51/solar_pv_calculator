@@ -631,23 +631,28 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'price_escalation': float(data.get('price_escalation', 0.025))  # 2.5% per year default
         }
         
+        # Calculate annual energy in kWh
+        annual_energy_kwh = float(wdf['p_mp'].sum() / 1000)  # Convert from W to kW
+        
+        # Calculate financial metrics
         financial_metrics = calculate_financial_metrics(
             annual_energy=annual_energy_kwh,
-            installed_cost=total_installed_cost,  
-            electricity_rate=defaults['electricity_rate'],  
-            maintenance_cost=defaults['maintenance_cost'],    
-            project_life=25,  
-            fed_credit=0.26,  
-            st_credit=0,  
-            interest_rate=0.06,  
-            degradation=defaults['degradation'],      
-            price_escalation=defaults['price_escalation']  
+            installed_cost=total_installed_cost,
+            electricity_rate=defaults['electricity_rate'],
+            maintenance_cost=defaults['maintenance_cost'],
+            project_life=25,
+            fed_credit=0.26,
+            st_credit=0,
+            interest_rate=0.05,
+            degradation=defaults['degradation'],
+            price_escalation=defaults['price_escalation']
         )
         
+        # Add cost breakdown to financial metrics
         financial_metrics['cost_breakdown'] = cost_breakdown
         
         performance_data = {
-            'annual_energy': annual_energy_kwh,
+            'annual_energy': annual_energy_kwh,  # Use the calculated annual energy
             'peak_dc_power': peak_dc_kW,
             'peak_ac_power': peak_ac_kW,
             'performance_ratio': performance_ratio,
@@ -656,6 +661,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'modules_per_string': max_modules_per_string,
             'strings_per_inverter': max_parallel_strings,
             'number_of_inverters': num_inverters_needed,
+            'actual_system_size_kw': float(system_size_kw),
             'dc_ac_ratio': float(dc_ac_ratio),
             'total_module_area': float(module['Area'] * modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'module_area': float(module['Area']),
@@ -982,16 +988,16 @@ def calculate():
 
         # Calculate financial metrics
         financial_metrics = calculate_financial_metrics(
-            system_output['annual_energy'],
-            installed_cost,
-            electricity_rate,
-            maintenance_cost,
-            project_life,
-            fed_credit,
-            st_credit,
-            interest_rate,
-            degradation,
-            price_escalation
+            annual_energy=system_output['annual_energy'],
+            installed_cost=installed_cost,
+            electricity_rate=electricity_rate,
+            maintenance_cost=maintenance_cost,
+            project_life=project_life,
+            fed_credit=fed_credit,
+            st_credit=st_credit,
+            interest_rate=interest_rate,
+            degradation=degradation,
+            price_escalation=price_escalation
         )
         
         # Combine all results
