@@ -233,7 +233,6 @@
             </div>
             <div id="financialSection" class="collapse">
               <div class="card-body">
-
                 <div class="form-group">
                   <label for="installed_cost">Installed Cost</label>
                   <div class="input-group">
@@ -281,27 +280,6 @@
                   <label for="price_escalation">Electricity Price Escalation (%)</label>
                   <input type="number" class="form-control" id="price_escalation" name="price_escalation" step="0.1">
                   <small class="form-text text-muted">Historical average: 2.5% per year</small>
-                </div>
-                
-                <div class="form-group">
-                  <label for="module-cost">Module Cost ($/W)</label>
-                  <input type="number" class="form-control" id="module-cost" name="module_cost" value="0.35" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                  <label for="inverter-cost">Inverter Cost ($/W)</label>
-                  <input type="number" class="form-control" id="inverter-cost" name="inverter_cost" value="0.10" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                  <label for="bos-cost">Balance of System Cost ($/W)</label>
-                  <input type="number" class="form-control" id="bos-cost" name="bos_cost" value="0.30" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                  <label for="installation-cost">Installation Cost ($/W)</label>
-                  <input type="number" class="form-control" id="installation-cost" name="installation_cost" value="0.40" step="0.01" min="0">
-                </div>
-                <div class="form-group">
-                  <label for="soft-cost">Soft Costs ($/W)</label>
-                  <input type="number" class="form-control" id="soft-cost" name="soft_cost" value="0.35" step="0.01" min="0">
                 </div>
               </div>
             </div>
@@ -886,69 +864,80 @@
 
   <!-- Cost Breakdown Modal -->
   <div class="modal fade" id="costBreakdownModal" tabindex="-1" aria-labelledby="costBreakdownModalLabel" >
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="costBreakdownModalLabel">System Cost Breakdown</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>Modules (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="module_cost" value="38.5" step="0.1">
+          <div class="row">
+            <div class="col-md-6">
+              <!-- Modules -->
+              <div class="form-group mb-3">
+                <label for="module_cost">Modules ($/W)</label>
+                <input type="number" class="form-control cost-component" id="module_cost" value="0.35" step="0.01" min="0">
+              </div>
+              <!-- Inverters -->
+              <div class="form-group mb-3">
+                <label for="inverter_cost">Inverters ($/W)</label>
+                <input type="number" class="form-control cost-component" id="inverter_cost" value="0.10" step="0.01" min="0">
+              </div>
+              <!-- Balance of System -->
+              <h6 class="mt-4">Balance of System</h6>
+              <div class="form-group mb-3">
+                <label for="racking_cost">Racking ($/W)</label>
+                <input type="number" class="form-control cost-component" id="racking_cost" value="0.11" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="wiring_cost">Wiring ($/W)</label>
+                <input type="number" class="form-control cost-component" id="wiring_cost" value="0.165" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="disconnect_cost">Disconnect ($/W)</label>
+                <input type="number" class="form-control cost-component" id="disconnect_cost" value="0.055" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <!-- Installation -->
+              <h6>Installation</h6>
+              <div class="form-group mb-3">
+                <label for="land_cost">Land Purchase Cost ($)</label>
+                <input type="number" class="form-control cost-component" id="land_cost" value="0" step="1" min="0">
+                <small class="text-muted">Total cost of land purchase (if applicable)</small>
+              </div>
+              <div class="form-group mb-3">
+                <label for="labor_cost">Labor ($/W)</label>
+                <input type="number" class="form-control cost-component" id="labor_cost" value="0.22" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="install_overhead_cost">Install Overhead ($/W)</label>
+                <input type="number" class="form-control cost-component" id="install_overhead_cost" value="0.11" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="profit_cost">Profit ($/W)</label>
+                <input type="number" class="form-control cost-component" id="profit_cost" value="0.11" step="0.01" min="0">
+              </div>
+              <!-- Soft Costs -->
+              <h6 class="mt-4">Soft Costs</h6>
+              <div class="form-group mb-3">
+                <label for="permitting_cost">Permitting ($/W)</label>
+                <input type="number" class="form-control cost-component" id="permitting_cost" value="0.11" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="inspection_cost">Inspection ($/W)</label>
+                <input type="number" class="form-control cost-component" id="inspection_cost" value="0.055" step="0.01" min="0">
+              </div>
+              <div class="form-group mb-3">
+                <label for="interconnection_cost">Interconnection ($/W)</label>
+                <input type="number" class="form-control cost-component" id="interconnection_cost" value="0.11" step="0.01" min="0">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Inverters (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="inverter_cost" value="11" step="0.1">
-          </div>
-          <h6>Balance of System</h6>
-          <div class="form-group">
-            <label>Racking (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="racking_cost" value="11" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Wiring (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="wiring_cost" value="16.5" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Disconnect (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="disconnect_cost" value="5.5" step="0.1">
-          </div>
-          <h6>Installation</h6>
-          <div class="form-group">
-            <label for="land_cost">Land Purchase Cost ($)</label>
-            <input type="number" class="form-control" id="land_cost" name="land_cost" value="0" min="0" step="1000">
-            <small class="form-text text-muted">Total cost of land purchase (if applicable)</small>
-          </div>
-          <div class="form-group">
-            <label>Labor (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="labor_cost" value="22" step="0.1">
-          </div>
-        
-          <div class="form-group">
-            <label>Overhead (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="install_overhead_cost" value="11" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Profit (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="profit_cost" value="11" step="0.1">
-          </div>
-          <h6>Soft Costs</h6>
-          <div class="form-group">
-            <label>Permitting (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="permitting_cost" value="11" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Inspection (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="inspection_cost" value="5.5" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Interconnection (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="interconnection_cost" value="11" step="0.1">
-          </div>
-          <div class="form-group">
-            <label>Overhead (৳/W)</label>
-            <input type="number" class="form-control cost-component" id="soft_overhead_cost" value="11" step="0.1">
+          <div class="row mt-4">
+            <div class="col-12">
+              <canvas id="costBreakdownChart"></canvas>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -958,66 +947,62 @@
       </div>
     </div>
   </div>
+{{ ... }}
+          <!-- JS Dependencies -->
+          <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+          <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 
+          <!-- Your consolidated script.js reference -->
+          <script src="{{ url_for('static', filename='script.js') }}"></script>
 
+  </main>
 
-  
-
-  <!-- JS Dependencies -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
-
-  <!-- Your consolidated script.js reference -->
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
-
-</main>
-
-<div class="modal fade" id="moduleDetailsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" >
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="moduleDetailsModalLabel">Module Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
-      </div>
-      <div class="modal-body" id="moduleDetailsContent">
-        <!-- Populated by JavaScript -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  <div class="modal fade" id="moduleDetailsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" >
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="moduleDetailsModalLabel">Module Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
+        </div>
+        <div class="modal-body" id="moduleDetailsContent">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="modal fade" id="inverterDetailsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" >
-   <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="inverterDetailsModalLabel">Inverter Details</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
-      </div>
-      <div class="modal-body" id="inverterDetailsContent">
-        <!-- Populated by JavaScript -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  <div class="modal fade" id="inverterDetailsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" >
+     <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="inverterDetailsModalLabel">Inverter Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" ></button>
+        </div>
+        <div class="modal-body" id="inverterDetailsContent">
+          <!-- Populated by JavaScript -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize existing functions
-    initializeCalculator();
-    initializeCharts();
-    
-    // Initialize the new house energy calculator
-    initHouseEnergyCalculator();
-  });
-</script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize existing functions
+      initializeCalculator();
+      initializeCharts();
+      
+      // Initialize the new house energy calculator
+      initHouseEnergyCalculator();
+    });
+  </script>
 </body>
 </html>
