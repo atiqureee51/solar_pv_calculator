@@ -1273,8 +1273,8 @@ async function handleFormSubmit(event) {
             latitude: parseFloat($('#latitude').val()),
             longitude: parseFloat($('#longitude').val()),
             system_size: parseFloat($('#system-size').val()),
-            module_name: $('#module-select').val(),
-            inverter_name: $('#inverter-select').val(),
+            module_name: $('#module').val(),  // Fixed: changed from module-select to module
+            inverter_name: $('#inverter').val(),  // Fixed: changed from inverter-select to inverter
             tilt: parseFloat($('#tilt').val()),
             azimuth: parseFloat($('#azimuth').val()),
             gcr: parseFloat($('#gcr').val()),
@@ -1620,14 +1620,14 @@ function updateResults(systemAnalysis) {
 
         // Update cost breakdown pie chart
         if (systemAnalysis.financial_metrics.cost_breakdown) {
-            const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+            const ctx = document.getElementById('costBreakdownChart');
             let existingChart = Chart.getChart('costBreakdownChart');
             if (existingChart) {
                 existingChart.destroy();
             }
 
             const costData = systemAnalysis.financial_metrics.cost_breakdown;
-            new Chart(ctx, {
+            new Chart(ctx.getContext('2d'), {
                 type: 'pie',
                 data: {
                     labels: Object.keys(costData),
@@ -1669,13 +1669,13 @@ function updateResults(systemAnalysis) {
 
         // Update cashflow chart
         if (systemAnalysis.financial_metrics.cumulative_cashflow) {
-            const ctx = document.getElementById('cashflow-chart').getContext('2d');
+            const ctx = document.getElementById('cashflow-chart');
             let existingChart = Chart.getChart('cashflow-chart');
             if (existingChart) {
                 existingChart.destroy();
             }
 
-            new Chart(ctx, {
+            new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: Array.from({length: systemAnalysis.financial_metrics.cumulative_cashflow.length}, (_, i) => `Year ${i}`),
