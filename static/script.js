@@ -1427,12 +1427,14 @@ function updateResults(systemAnalysis) {
 
     // ---------- System Info -----------
     $('#total-modules').text(systemAnalysis.results.total_modules);
-    $('#module-power').text(systemAnalysis.results.module_power.toFixed(2) + ' W');
+    $('#module-type').text(systemAnalysis.results.module_type);
+    $('#module-power').text(systemAnalysis.results.module_power.toFixed(0) + ' W');
     $('#modules-series').text(systemAnalysis.results.modules_per_string);
     $('#parallel-strings').text(systemAnalysis.results.strings_per_inverter);
+
     $('#inverter-count').text(systemAnalysis.results.number_of_inverters);
     $('#dc-ac-ratio').text(systemAnalysis.results.dc_ac_ratio.toFixed(2));
-    $('#module-type').text(systemAnalysis.results.module_type);
+    $('#inverter-power').text(systemAnalysis.results.inverter_power.toFixed(0) + ' kW');
     $('#inverter-type').text(systemAnalysis.results.inverter_type);
 
     // ---------- Site Information -----------
