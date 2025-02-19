@@ -22,36 +22,6 @@ import os
 app = Flask(__name__)
 
 
-
-# System type to temperature model mapping
-SYSTEM_TYPE_DEFAULTS = {
-    'ground-mounted': {
-        'temp_model': 'sapm',
-        'sapm_type': 'open_rack_glass_polymer',
-        'pvsyst_type': 'freestanding'
-    },
-    'roof-based': {
-        'temp_model': 'sapm',
-        'sapm_type': 'close_mount_glass_glass',
-        'pvsyst_type': 'insulated'
-    },
-    'floating': {
-        'temp_model': 'sapm',
-        'sapm_type': 'open_rack_glass_polymer',
-        'pvsyst_type': 'freestanding'
-    },
-    'agrivoltaics': {
-        'temp_model': 'sapm',
-        'sapm_type': 'open_rack_glass_polymer',
-        'pvsyst_type': 'freestanding'
-    }
-}
-
-currency_conversion = {"USD": 1, "BDT": 110}
-def_elec_rate_bd = 0.08
-def_elec_rate_us = 0.12
-def_elec_rate_global = 0.10
-
 # ------------- Weather Data Helpers -------------
 def get_psm_url(lon):
     """Select correct NREL PSM3 endpoint based on longitude."""
@@ -442,8 +412,9 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         num_inverters_needed = max(1, math.ceil(modules_needed / modules_per_inverter))
         
         # Calculate actual system size and DC/AC ratio
-        inverter_ac_power = max(float(inverter.get('Paco', 0)), 0.1)  # Minimum 0.1W
-        dc_ac_ratio = (modules_needed * max(float(module.get('STC', 0)), 0.1)) / (num_inverters_needed * inverter_ac_power)
+        actual_system_size_w = modules_needed * module['STC']
+        actual_system_size_kw = actual_system_size_w / 1000
+        dc_ac_ratio = actual_system_size_w / (num_inverters_needed * inverter['Paco'])
         
         location_obj = location.Location(latitude, longitude, 'Etc/GMT', altitude=0)
         
@@ -510,18 +481,20 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         wdf['effective_irradiance'] = pd.Series(effective_irr, index=weather.index)
         print("Effective irradiance done.")
 
-        mount = pvsystem.FixedMount(surface_tilt=tilt, surface_azimuth=azimuth)
+        # Create array with temperature model parameters
         array = pvsystem.Array(
-            mount=mount,
+            mount=pvsystem.FixedMount(surface_tilt=tilt, surface_azimuth=azimuth),
             module_parameters=module,
             temperature_model_parameters=temperature_model_parameters,
             modules_per_string=max_modules_per_string,
             strings=max_parallel_strings
         )
+
+        # Create PV system
         system_obj = pvsystem.PVSystem(
             arrays=[array],
             inverter_parameters=inverter,
-            losses_parameters={'soiling': 2, 'mismatch': 2, 'wiring': 2, 'shading': 0},
+            losses_parameters={'soiling': 2, 'mismatch': 2, 'wiring': 2, 'shading': 0}
         )
         
         mc = modelchain.ModelChain(system_obj, location_obj, losses_model='pvwatts')
@@ -872,16 +845,22 @@ def calculate():
         soft_cost = cost_breakdown.get('softCost', 0.275)
         land_cost = cost_breakdown.get('landCost', 0)
 
-        # Get temperature model parameters from request or system type defaults
+        # Get temperature model parameters directly from frontend
         temp_model = data.get('temperature_model')
-        if temp_model:
-            temp_model_params = {
-                'model': temp_model,
-                'type': data.get('sapm_type') if temp_model == 'sapm' else data.get('pvsyst_type')
-            }
-        else:
-            temp_model_params = SYSTEM_TYPE_DEFAULTS.get(system_type, SYSTEM_TYPE_DEFAULTS['ground-mounted'])
+        temp_model_params = {}
         
+        if temp_model == 'sapm':
+            temp_model_params = {
+                'a': float(data.get('param_a', -3.56)),  # Default to open rack glass/polymer
+                'b': float(data.get('param_b', -0.075)),
+                'deltaT': float(data.get('param_deltaT', 3))
+            }
+        elif temp_model == 'pvsyst':
+            temp_model_params = {
+                'u_c': float(data.get('param_u_c', 29.0)),  # Default to freestanding
+                'u_v': float(data.get('param_u_v', 0.0))
+            }
+            
         # Calculate PV system output
         system_output = calculate_pv_output(
             latitude, longitude, system_size, module_name,
