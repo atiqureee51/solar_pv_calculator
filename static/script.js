@@ -1519,13 +1519,13 @@ function updateResults(systemAnalysis) {
     }
 
     // 2. Weather Charts
-    if (systemAnalysis.weather_data) {
+    if (systemAnalysis.results.weather_data) {
         // GHI Chart
-        if (systemAnalysis.weather_data.monthly_ghi) {
+        if (systemAnalysis.results.monthly_ghi) {
             updateChart(
                 'ghi-chart',
                 monthlyLabels,
-                systemAnalysis.weather_data.monthly_ghi,
+                systemAnalysis.results.monthly_ghi,
                 'Monthly Global Horizontal Irradiance',
                 'Month',
                 'GHI (kWh/m²)'
@@ -1533,11 +1533,11 @@ function updateResults(systemAnalysis) {
         }
 
         // Temperature Chart
-        if (systemAnalysis.weather_data.monthly_temperature) {
+        if (systemAnalysis.results.monthly_temperature) {
             updateChart(
                 'temperature-chart',
                 monthlyLabels,
-                systemAnalysis.weather_data.monthly_temperature,
+                systemAnalysis.results.monthly_temperature,
                 'Monthly Average Temperature',
                 'Month',
                 'Temperature (°C)'
@@ -1545,11 +1545,11 @@ function updateResults(systemAnalysis) {
         }
 
         // Wind Speed Chart
-        if (systemAnalysis.weather_data.monthly_wind_speed) {
+        if (systemAnalysis.results.monthly_wind_speed) {
             updateChart(
                 'wind-chart',
                 monthlyLabels,
-                systemAnalysis.weather_data.monthly_wind_speed,
+                systemAnalysis.results.monthly_wind_speed,
                 'Monthly Average Wind Speed',
                 'Month',
                 'Wind Speed (m/s)'
