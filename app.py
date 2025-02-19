@@ -550,41 +550,26 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         else:
             dc_annual_series = dc_filled
 
-        # Calculate daily and monthly energy
-        # For daily profile, calculate average for each hour of the day
-        daily_energy = [float(x) for x in ac_annual_series.groupby(ac_annual_series.index.hour).mean().tolist()]
-        monthly_energy = [float(x) for x in ac_annual_series.resample('M').sum().tolist()]
-
-        # Calculate annual energy and power values
-        annual_energy_mwh = (ac_annual_series.sum()*math.ceil(modules_needed / modules_per_inverter))/1e6
-        peak_ac = ac_annual_series.max()
-        peak_dc = dc_annual_series.max()
+        # Calculate annual energy from AC output (in kWh)
+        annual_energy_kwh = float(ac_annual_series.sum() / 1000)  # Convert from Wh to kWh
         
-        annual_energy_kwh = float(annual_energy_mwh*1000)
-        peak_ac_kW = float((peak_ac/1000)*math.ceil(modules_needed / modules_per_inverter))
-        peak_dc_kW = float((peak_dc/1000)*math.ceil(modules_needed / modules_per_inverter))
-
-        # Calculate performance metrics as before...
-        poa_wh_m2=(env_data['poa_global'])
-        poa_sum=poa_wh_m2.resample('Y').sum().values[0]
-        if poa_sum > 0:
-            Reference_Yield = poa_sum/1000
-            Final_Yield = (annual_energy_kwh/(max(float(module.get('STC', 0)), 0.1)*modules_per_inverter*math.ceil(modules_needed / modules_per_inverter)))*1000
-            performance_ratio = Final_Yield/Reference_Yield
-        else:
-            Reference_Yield = 0
-            Final_Yield = 0
-            performance_ratio = 0
-            
-        # Calculate capacity factor with zero check
-        total_possible_hours = 8760  # hours in a year
-        rated_power = max(float(module.get('STC', 0)), 0.1)*modules_per_inverter*math.ceil(modules_needed / modules_per_inverter)
-        if rated_power > 0:
-            capacity_factor = ((annual_energy_kwh)/rated_power*1000/total_possible_hours)
-        else:
-            capacity_factor = 0
-            
-        specific_yield = float(annual_energy_kwh / system_size_kw if system_size_kw > 0 else 0)
+        # Calculate daily and monthly energy
+        daily_energy = [float(ac_annual_series.groupby(ac_annual_series.index.dayofyear).mean()[i]) for i in range(1, 366)]
+        monthly_energy = [float(ac_annual_series.groupby(ac_annual_series.index.month).sum()[i] / 1000) for i in range(1, 13)]
+        
+        # Calculate performance metrics
+        peak_dc_kW = float(dc_annual_series.max() / 1000)  # Convert peak DC power to kW
+        peak_ac_kW = float(ac_annual_series.max() / 1000)  # Convert peak AC power to kW
+        
+        # Calculate capacity factor (actual output / theoretical maximum)
+        capacity_factor = annual_energy_kwh / (system_size_kw * 8760)
+        
+        # Calculate performance ratio (actual output / theoretical output based on irradiance)
+        theoretical_output = env_data['poa_global'].sum() * (system_size_kw / 1000)  # Convert to same units
+        performance_ratio = annual_energy_kwh / theoretical_output if theoretical_output > 0 else 0
+        
+        # Calculate specific yield (kWh/kWp)
+        specific_yield = annual_energy_kwh / system_size_kw if system_size_kw > 0 else 0
 
         # Calculate financial metrics
         currency_conversion = {"USD": 1, "BDT": 110}
@@ -630,9 +615,6 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'degradation': float(data.get('degradation', 0.005)),      # 0.5% per year default
             'price_escalation': float(data.get('price_escalation', 0.025))  # 2.5% per year default
         }
-        
-        # Calculate annual energy in kWh
-        annual_energy_kwh = float(wdf['p_mp'].sum() / 1000)  # Convert from W to kW
         
         # Calculate financial metrics
         financial_metrics = calculate_financial_metrics(
