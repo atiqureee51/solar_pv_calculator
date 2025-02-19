@@ -389,9 +389,11 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         inv_db = pvsystem.retrieve_sam('SandiaInverter')
         
         if module_name not in mod_db.columns:
-            return {"error": f"Module '{module_name}' not found"}
+            print(f"Module '{module_name}' not found in database")
+            return {"error": f"Module '{module_name}' not found in database"}
         if inverter_name not in inv_db.columns:
-            return {"error": f"Inverter '{inverter_name}' not found"}
+            print(f"Inverter '{inverter_name}' not found in database")
+            return {"error": f"Inverter '{inverter_name}' not found in database"}
             
         module = mod_db[module_name].to_dict()
         inverter = inv_db[inverter_name].to_dict()
@@ -890,6 +892,13 @@ def calculate():
             latitude, longitude, system_size, module_name,
             inverter_name, temp_model_params, tilt, azimuth, gcr
         )
+        
+        # Check if system_output contains an error
+        if isinstance(system_output, dict) and 'error' in system_output:
+            return jsonify({
+                'success': False,
+                'error': system_output['error']
+            })
         
         if not system_output:
             return jsonify({
