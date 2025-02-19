@@ -1683,6 +1683,59 @@ function updateResults(systemAnalysis) {
     $('#status-message').removeClass('d-none alert-danger alert-success')
         .addClass('alert-success')
         .text('Calculation completed successfully!');
+        
+    // Display sizing warnings if any
+    const warningsContainer = $('#sizing-warnings');
+    warningsContainer.empty();
+    
+    if (systemAnalysis.results.warnings && systemAnalysis.results.warnings.length > 0) {
+        warningsContainer.append('<div class="alert alert-warning mt-2"><ul class="mb-0"></ul></div>');
+        const warningsList = warningsContainer.find('ul');
+        systemAnalysis.results.warnings.forEach(warning => {
+            warningsList.append(`<li>${warning}</li>`);
+        });
+        warningsContainer.show();
+    } else {
+        warningsContainer.hide();
+    }
+
+    // Display recommendations if any
+    const recommendationsContainer = $('#sizing-recommendations');
+    recommendationsContainer.empty();
+    
+    if (systemAnalysis.results.recommendations && systemAnalysis.results.recommendations.length > 0) {
+        recommendationsContainer.append('<div class="alert alert-info mt-2"><ul class="mb-0"></ul></div>');
+        const recommendationsList = recommendationsContainer.find('ul');
+        systemAnalysis.results.recommendations.forEach(rec => {
+            recommendationsList.append(`<li>${rec}</li>`);
+        });
+        recommendationsContainer.show();
+    } else {
+        recommendationsContainer.hide();
+    }
+
+    // Update sizing status messages
+    const sizingStatus = $('#sizingStatus');
+    sizingStatus.empty();
+    
+    if (systemAnalysis.results.dc_ac_ratio) {
+        const ratio = systemAnalysis.results.dc_ac_ratio;
+        let statusHtml = '';
+        
+        if (ratio < 1.1) {
+            statusHtml = '<div class="alert alert-warning">System is undersized (DC/AC ratio < 1.1). Consider adding more modules.</div>';
+        } else if (ratio > 1.3) {
+            statusHtml = '<div class="alert alert-warning">System is oversized (DC/AC ratio > 1.3). Consider using a larger inverter.</div>';
+        } else {
+            statusHtml = '<div class="alert alert-success">System sizing is optimal (DC/AC ratio between 1.1-1.3)</div>';
+        }
+        
+        sizingStatus.html(statusHtml);
+    }
+
+    // Display sizing warnings if any
+    const warningsContainer2 = $('#sizing-warnings');
+    warningsContainer2.empty();
 }
 
 // Utility
