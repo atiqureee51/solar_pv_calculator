@@ -23,33 +23,18 @@ app = Flask(__name__)
 
 # Module cache for better performance
 _module_cache = {
-    'cec': None,
     'sandia': None,
-    'cec_processed': None,
-    'sandia_processed': None,
     'all_modules': None,
     'default_module': None
 }
 
 def get_modules():
     """
-    Combine Sandia and CEC modules into a single list, with a prefix to indicate the source.
+    Get list of Sandia modules.
     Uses efficient caching and lazy loading for better performance.
     """
     if _module_cache['all_modules'] is not None:
         return _module_cache['all_modules']
-
-    # Load CEC modules from CSV with optimized reading
-    if _module_cache['cec'] is None:
-        try:
-            cec_file = os.path.join('data', 'CEC Modules.csv')
-            # Only read the Name column for the list
-            _module_cache['cec'] = pd.read_csv(cec_file, usecols=['Name'])
-            _module_cache['cec_processed'] = [f"CEC: {name}" for name in _module_cache['cec']['Name']]
-        except Exception as e:
-            print(f"Error loading CEC modules: {e}")
-            _module_cache['cec'] = pd.DataFrame()
-            _module_cache['cec_processed'] = []
 
     # Load Sandia modules from CSV with optimized reading
     if _module_cache['sandia'] is None:
@@ -57,33 +42,23 @@ def get_modules():
             sandia_file = os.path.join('data', 'Sandia Modules.csv')
             # Only read the Name column for the list
             _module_cache['sandia'] = pd.read_csv(sandia_file, usecols=['Name'])
-            _module_cache['sandia_processed'] = [f"Sandia: {name}" for name in _module_cache['sandia']['Name']]
+            _module_cache['sandia_processed'] = [name for name in _module_cache['sandia']['Name']]
         except Exception as e:
             print(f"Error loading Sandia modules: {e}")
             _module_cache['sandia'] = pd.DataFrame()
             _module_cache['sandia_processed'] = []
 
-    # Combine both lists
-    _module_cache['all_modules'] = _module_cache['sandia_processed'] + _module_cache['cec_processed']
+    # Use Sandia modules only
+    _module_cache['all_modules'] = _module_cache['sandia_processed']
     
-    # Try to use Sandia module at index 467 as default
+    # Use SunPower SPR-315E-WHT [2007 (E)] as default (index 474 in Sandia CSV)
     default_module = None
-    if len(_module_cache['sandia_processed']) > 467:
-        default_module = _module_cache['sandia_processed'][467]
+    if len(_module_cache['sandia_processed']) > 474:
+        default_module = _module_cache['sandia_processed'][474]
     
-    # If Sandia module 467 not available, look for a BP Solar module around 180-200W
-    if default_module is None:
-        for module in _module_cache['all_modules']:
-            if 'bp' in module.lower() and any(x in module.lower() for x in ['180', '185', '190', '195', '200']):
-                default_module = module
-                break
-            
-    # If no BP module found, use first Sandia module as default
+    # If target module not available, use first available module
     if default_module is None and len(_module_cache['sandia_processed']) > 0:
         default_module = _module_cache['sandia_processed'][0]
-    # If no Sandia modules, use first CEC module
-    elif default_module is None and len(_module_cache['cec_processed']) > 0:
-        default_module = _module_cache['cec_processed'][0]
     
     _module_cache['default_module'] = default_module
     return _module_cache['all_modules']
@@ -428,30 +403,10 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         print("Starting PV output calculation...")
         
         # Strip the prefix (CEC: or Sandia:) from the module name
-        module_source, module_name = module_name.split(': ', 1) if ': ' in module_name else ('CEC', module_name)
+        module_source, module_name = module_name.split(': ', 1) if ': ' in module_name else ('Sandia', module_name)
         
         # Get module data from our cache
-        if module_source == 'CEC':
-            if _module_cache['cec'] is None:
-                cec_file = os.path.join('data', 'CEC Modules.csv')
-                _module_cache['cec'] = pd.read_csv(cec_file)
-            module_data = _module_cache['cec'][_module_cache['cec']['Name'] == module_name]
-            if len(module_data) == 0:
-                return {"error": f"Module '{module_name}' not found in CEC database"}
-            module = module_data.iloc[0].to_dict()
-            
-            # Map CEC parameters to Sandia format for calculations
-            module.update({
-                'Voco': module['V_oc_ref'],
-                'Vmpo': module['V_mp_ref'],
-                'Impo': module['I_mp_ref'],
-                'Isco': module['I_sc_ref'],
-                'Aimp': module['alpha_sc'],
-                'Bvoco': module['beta_oc'],
-                'Bvmpo': module['beta_oc'],  # Approximate
-                'Area': module['A_c']
-            })
-        else:  # Sandia
+        if module_source == 'Sandia':
             if _module_cache['sandia'] is None:
                 sandia_file = os.path.join('data', 'Sandia Modules.csv')
                 _module_cache['sandia'] = pd.read_csv(sandia_file)
@@ -459,6 +414,18 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             if len(module_data) == 0:
                 return {"error": f"Module '{module_name}' not found in Sandia database"}
             module = module_data.iloc[0].to_dict()
+            
+            # Map Sandia parameters to standard format for calculations
+            module.update({
+                'Voco': module['Voco'],
+                'Vmpo': module['Vmpo'],
+                'Impo': module['Impo'],
+                'Isco': module['Isco'],
+                'Aimp': module['Aisc'],
+                'Bvoco': module['Bvoco'],
+                'Bvmpo': module['Bvmpo'],  # Approximate
+                'Area': module['Area']
+            })
         
         # Get inverter data
         inv_db = pvsystem.retrieve_sam('SandiaInverter')
@@ -699,59 +666,25 @@ def get_module_details(module_name: str):
     Get module details with efficient caching.
     """
     # Strip the prefix (CEC: or Sandia:) from the module name
-    source, name = module_name.split(': ', 1) if ': ' in module_name else ('CEC', module_name)
+    source, name = module_name.split(': ', 1) if ': ' in module_name else ('Sandia', module_name)
     
     try:
-        if source == 'CEC':
-            if _module_cache['cec'] is None:
-                cec_file = os.path.join('data', 'CEC Modules.csv')
-                _module_cache['cec'] = pd.read_csv(cec_file)
-            
-            module_data = _module_cache['cec'][_module_cache['cec']['Name'] == name]
-            if len(module_data) == 0:
-                return None
-                
-            row = module_data.iloc[0]
-            return {
-                'name': name,
-                'manufacturer': row.get('Manufacturer', 'Unknown'),
-                'technology': row.get('Technology', 'Unknown'),
-                'bifacial': row.get('Bifacial', False),
-                'stc': float(row.get('STC', 0)),  # STC rating directly from CEC
-                'ptc': float(row.get('PTC', 0)),  # PTC rating directly from CEC
-                'area': float(row.get('A_c', 0)),
-                'cells_in_series': int(row.get('N_s', 0)),
-                'i_sc_ref': float(row.get('I_sc_ref', 0)),
-                'v_oc_ref': float(row.get('V_oc_ref', 0)),
-                'i_mp_ref': float(row.get('I_mp_ref', 0)),
-                'v_mp_ref': float(row.get('V_mp_ref', 0)),
-                'alpha_sc': float(row.get('alpha_sc', 0)),
-                'beta_oc': float(row.get('beta_oc', 0)),
-                'gamma_pmp': float(row.get('gamma_r', 0)),
-                'cells_in_parallel': 1,
-                'source': source
-            }
-        
-        elif source == 'Sandia':
+        if source == 'Sandia':
             if _module_cache['sandia'] is None:
                 sandia_file = os.path.join('data', 'Sandia Modules.csv')
                 _module_cache['sandia'] = pd.read_csv(sandia_file)
-                
+            
             module_data = _module_cache['sandia'][_module_cache['sandia']['Name'] == name]
             if len(module_data) == 0:
                 return None
                 
             row = module_data.iloc[0]
-            
-            # Calculate STC power from Impo * Vmpo (these are at STC conditions in Sandia database)
-            stc_power = float(row.get('Impo', 0)) * float(row.get('Vmpo', 0))
-            
             return {
                 'name': name,
                 'manufacturer': row.get('Manufacturer', 'Unknown'),
                 'technology': row.get('Material', 'Unknown'),  # Sandia uses Material instead of Technology
                 'bifacial': False,  # Sandia doesn't specify this
-                'stc': stc_power,  # Calculated from Impo * Vmpo
+                'stc': float(row.get('STC', 0)),  # STC rating directly from Sandia
                 'ptc': None,  # Sandia doesn't provide PTC
                 'area': float(row.get('Area', 0)),
                 'cells_in_series': int(row.get('Cells in Series', 0)),
@@ -768,8 +701,6 @@ def get_module_details(module_name: str):
                 
     except Exception as e:
         print(f"Error getting module details: {str(e)}")
-        return None
-    
     return None
 
 def get_inverter_details(inverter_name):
