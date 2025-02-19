@@ -1098,7 +1098,7 @@ def calculate():
             annual_energy=performance_data['annual_energy'],
             installed_cost=max(float(data.get('installed_cost', 80000)), 1),  # Minimum $1
             electricity_rate=max(float(data.get('electricity_rate', 0.12)), 0.01),  # Minimum $0.01/kWh
-            maintenance_cost=max(float(data.get('maintenance_cost', 15 * system_size_kw)), 0),  # $15/kW-year default
+            maintenance_cost=max(float(data.get('maintenance_cost', 15 * performance_data['system_size_kw'])), 0),  # $15/kW-year default
             project_life=max(int(data.get('project_life', 25)), 1),  # Minimum 1 year
             fed_credit=min(max(float(data.get('federal_tax_credit', 0.30)), 0), 1),  # 0-100%
             st_credit=min(max(float(data.get('state_tax_credit', 0)), 0), 1),  # 0-100%
