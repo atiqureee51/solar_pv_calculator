@@ -1473,15 +1473,15 @@ function updateResults(systemAnalysis) {
         $('#sizingStatus').html('');
     }
     // Update system performance metrics with units
-    $('#peak-dc').text(`${systemAnalysis.peak_dc_power.toFixed(2)} kW`);
-    $('#peak-ac').text(`${systemAnalysis.peak_ac_power.toFixed(2)} kW`);
-    $('#capacity-factor').text(`${(systemAnalysis.capacity_factor * 100).toFixed(1)}%`);
-    $('#performance-ratio').text(`${(systemAnalysis.performance_ratio * 100).toFixed(1)}%`);
-    $('#annual-energy').text(`${systemAnalysis.annual_energy.toFixed(0)} kWh`);
-    $('#specific-yield').text(`${systemAnalysis.specific_yield.toFixed(0)} kWh/kWp`);
+    $('#peak-dc').text(`${systemAnalysis.system_output.peak_dc_power.toFixed(2)} kW`);
+    $('#peak-ac').text(`${systemAnalysis.system_output.peak_ac_power.toFixed(2)} kW`);
+    $('#capacity-factor').text(`${(systemAnalysis.system_output.capacity_factor * 100).toFixed(1)}%`);
+    $('#performance-ratio').text(`${(systemAnalysis.system_output.performance_ratio * 100).toFixed(1)}%`);
+    $('#annual-energy').text(`${systemAnalysis.system_output.annual_energy.toFixed(0)} kWh`);
+    $('#specific-yield').text(`${systemAnalysis.system_output.specific_yield.toFixed(0)} kWh/kWp`);
     
     // ---------- TOP DASHBOARD ----------
-    $('#total-production').text(systemAnalysis.annual_energy.toFixed(0) + ' kWh');
+    $('#total-production').text(systemAnalysis.system_output.annual_energy.toFixed(0) + ' kWh');
     $('#cost-savings').text(symbol + systemAnalysis.annual_savings.toFixed(0));
     $('#payback-period').text(systemAnalysis.simple_payback.toFixed(1) + ' yrs');
     $('#co2-savings').text(systemAnalysis.co2_savings.toFixed(1) + ' tons');
@@ -1500,7 +1500,7 @@ function updateResults(systemAnalysis) {
     // 2) System Size (kW):
     // We'll display the final DC rating as "peak_dc_power" from system_analysis, 
     // but you could also use the user input if you prefer.
-    const systemSizeKW = systemAnalysis.peak_dc_power; 
+    const systemSizeKW = systemAnalysis.system_output.peak_dc_power; 
     //$('#system-size').text(`${systemSizeKW.toFixed(2)} kW`);
 
     // 3) LCOE:
@@ -1566,201 +1566,51 @@ function updateResults(systemAnalysis) {
 
     // ---------- System Performance -----------
 
-    $('#annual-production').text(`${(systemAnalysis.annual_energy/1000).toFixed(2)} MWh`);
+    $('#annual-production').text(`${(systemAnalysis.system_output.annual_energy/1000).toFixed(2)} MWh`);
     
     // Display Specific Yield (kWh/kWp)
-    const specificYield = systemAnalysis.specific_yield;
+    const specificYield = systemAnalysis.system_output.specific_yield;
     $('#specific-yield').text(specificYield ? `${specificYield.toFixed(2)} kWh/kWp` : '-');
     
     // Display Performance Ratio (as percentage)
-    const performanceRatio = systemAnalysis.performance_ratio;
+    const performanceRatio = systemAnalysis.system_output.performance_ratio;
     $('#performance-ratio').text(performanceRatio ? `${(performanceRatio * 100).toFixed(2)}%` : '-');
     
     // Display Capacity Factor (as percentage)
-    const capacityFactor = systemAnalysis.capacity_factor;
+    const capacityFactor = systemAnalysis.system_output.capacity_factor;
     $('#capacity-factor').text(capacityFactor ? `${(capacityFactor * 100).toFixed(2)}%` : '-');
 
     // ---------- Energy Production -----
     // annual_energy is kWh
-    $('#annual-energy').text((systemAnalysis.annual_energy / 1000).toFixed(2)); // MWh
+    $('#annual-energy').text((systemAnalysis.system_output.annual_energy / 1000).toFixed(2)); // MWh
 
-    $('#performance-ratio').text((systemAnalysis.performance_ratio * 100).toFixed(2));
-    $('#capacity-factor').text((systemAnalysis.capacity_factor * 100).toFixed(2));
+    $('#performance-ratio').text((systemAnalysis.system_output.performance_ratio * 100).toFixed(2));
+    $('#capacity-factor').text((systemAnalysis.system_output.capacity_factor * 100).toFixed(2));
 
     // ---------- Area Info -------------
-    $('#module-area').text(systemAnalysis.module_area.toFixed(2));
-    $('#total-area').text(systemAnalysis.total_module_area.toFixed(2));
+    $('#module-area').text(systemAnalysis.system_output.module_area.toFixed(2));
+    $('#total-module-area').text(systemAnalysis.system_output.total_module_area.toFixed(2));
+    $('#total-modules').text(systemAnalysis.system_output.total_modules);
+    $('#modules-per-string').text(systemAnalysis.system_output.modules_per_string);
+    $('#strings-per-inverter').text(systemAnalysis.system_output.strings_per_inverter);
+    $('#number-of-inverters').text(systemAnalysis.system_output.number_of_inverters);
 
-    // ---------- Temp & Irradiance -----
-    if (systemAnalysis.min_design_temp !== undefined && systemAnalysis.max_design_temp !== undefined) {
-        $('#min-design-temp').text(systemAnalysis.min_design_temp.toFixed(1));
-        $('#max-design-temp').text(systemAnalysis.max_design_temp.toFixed(1));
-    }
-    if (systemAnalysis.effective_irradiance !== undefined) {
-        $('#effective-irradiance').text(systemAnalysis.effective_irradiance.toFixed(1));
-    }
-    if (systemAnalysis.cell_temperature !== undefined) {
-        $('#cell-temperature').text(systemAnalysis.cell_temperature.toFixed(1));
-    }
+    // ---------- System Details -------------
+    $('#actual-system-size').text(systemAnalysis.system_output.actual_system_size_kw.toFixed(2));
+    $('#dc-ac-ratio').text(systemAnalysis.system_output.dc_ac_ratio.toFixed(2));
+    $('#module-type').text(systemAnalysis.system_output.module_type);
 
-    // ---------- Financial -------------
-    // Update metrics display
-    if (systemAnalysis.financial_metrics && systemAnalysis.financials) {
-        // Use the same values from financials for both displays
-        $('#lcoe-value').text(symbol + `${systemAnalysis.financials.lcoe.toFixed(3)}/kWh`);
-        $('#npv-value').text(symbol + `${systemAnalysis.financials.npv.toFixed(2)}`);
-        $('#payback-value').text(`${systemAnalysis.financials.payback_period.toFixed(1)} years`);
-
-        // Update cost breakdown pie chart
-        if (systemAnalysis.financials.cost_breakdown) {
-            const ctx = document.getElementById('costBreakdownChart').getContext('2d');
-            let existingChart = Chart.getChart('costBreakdownChart');
-            if (existingChart) {
-                existingChart.destroy();
-            }
-
-            const costData = systemAnalysis.financials.cost_breakdown;
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(costData),
-                    datasets: [{
-                        data: Object.values(costData),
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(153, 102, 255, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Project Cost Breakdown'
-                        },
-                        legend: {
-                            position: 'right'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / total) * 100).toFixed(1);
-                                    return `${context.label}: ${symbol}${value.toFixed(2)} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update cashflow chart
-        if (systemAnalysis.financials.cumulative_cashflow) {
-            const ctx = document.getElementById('cashflow-chart').getContext('2d');
-            let existingChart = Chart.getChart('cashflow-chart');
-            if (existingChart) {
-                existingChart.destroy();
-            }
-
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: systemAnalysis.financials.cumulative_cashflow.length}, (_, i) => `Year ${i}`),
-                    datasets: [{
-                        label: 'Cumulative Cash Flow',
-                        data: systemAnalysis.financials.cumulative_cashflow,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Project Timeline'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Cumulative Cash Flow'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return symbol + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Project Cash Flow Over Time'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    return `Cash Flow: ${symbol}${value.toLocaleString()}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    // Update energy production charts
+    if (systemAnalysis.system_output.monthly_energy) {
+        const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        updateChart('monthlyProductionChart', monthlyLabels, systemAnalysis.system_output.monthly_energy,
+            'Monthly Energy Production', 'Month', 'Energy (kWh)');
     }
 
-    // ---------- Weather charts --------
-    if (systemAnalysis.weather_data) {
-        updateWeatherCharts(systemAnalysis.weather_data);
-    }
-
-    // ---------- Technical Details -----------
-    if (systemAnalysis.system_analysis) {
-        $('#module-type').text(systemAnalysis.module_type || '-');
-        $('#module-power').text(systemAnalysis.module_power ? `${systemAnalysis.module_power.toFixed(0)} W` : '-');
-        $('#modules-series').text(systemAnalysis.modules_per_string || '-');
-        $('#parallel-strings').text(systemAnalysis.strings_per_inverter || '-');
-        $('#total-modules').text(systemAnalysis.total_modules || '-');
-        $('#inverter-type').text(systemAnalysis.inverter_type || '-');
-        $('#inverter-power').text(systemAnalysis.inverter_power ? `${(systemAnalysis.inverter_power/1000).toFixed(2)} kW` : '-');
-        $('#inverter-count').text(systemAnalysis.number_of_inverters || '-');
-        $('#dc-ac-ratio').text(systemAnalysis.dc_ac_ratio ? systemAnalysis.dc_ac_ratio.toFixed(2) : '-');
-        //$('#system-size').text(response.system_analysis.system_size ? `${response.system_analysis.system_size.toFixed(2)} kW` : '-');
-
-        // Update Monthly Energy Profile
-        if (systemAnalysis.monthly_energy && systemAnalysis.monthly_energy.length > 0) {
-            updateChart('monthly-production-chart',
-                Array.from({length: 12}, (_, i) => i + 1),  // Months 1-12
-                systemAnalysis.monthly_energy,
-                'Monthly Energy Production',
-                'Month',
-                'Energy (kWh)'
-            );
-        }
-
-        // Update Daily Energy Profile
-        if (systemAnalysis.daily_energy && systemAnalysis.daily_energy.length > 0) {
-            // Take first 24 hours for daily profile
-            const dailyData = systemAnalysis.daily_energy.slice(0, 24);
-            updateChart('daily-production-chart',
-                Array.from({length: 24}, (_, i) => i),  // Hours 0-23
-                dailyData,
-                'Daily Energy Production',
-                'Hour',
-                'Energy (kWh)'
-            );
-        }
+    if (systemAnalysis.system_output.daily_energy) {
+        const dailyLabels = Array.from({length: 365}, (_, i) => i + 1);
+        updateChart('dailyProductionChart', dailyLabels, systemAnalysis.system_output.daily_energy,
+            'Daily Energy Production', 'Day of Year', 'Energy (Wh)');
     }
 }
 
