@@ -340,7 +340,7 @@ def get_cell_temperature(env_data, weather, params):
 
 def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
                         inverter_name, temperature_model_parameters,
-                        tilt=30, azimuth=180, gcr=0.4, array_params={}):
+                        tilt=30, azimuth=180, gcr=0.4):
     try:
         print("Starting PV output calculation...")
         mod_db = pvsystem.retrieve_sam('SandiaMod')
@@ -487,8 +487,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             module_parameters=module,
             temperature_model_parameters=temperature_model_parameters,
             modules_per_string=max_modules_per_string,
-            strings=max_parallel_strings,
-            **array_params
+            strings=max_parallel_strings
         )
 
         # Create PV system
@@ -863,7 +862,6 @@ def calculate():
 
         # Get temperature model parameters directly from frontend
         temp_model = data.get('temperature_model', 'sapm')
-        temp_model_params = {}
         
         # Get the parameters based on what user selected in frontend
         if temp_model == 'sapm':
@@ -872,23 +870,19 @@ def calculate():
                 'b': float(data.get('param_b', -0.075)),
                 'deltaT': float(data.get('param_deltaT', 3))
             }
-        elif temp_model == 'pvsyst':
+        else:  # pvsyst
             temp_model_params = {
                 'u_c': float(data.get('param_u_c', 29.0)),
                 'u_v': float(data.get('param_u_v', 0.0))
             }
-
-        # Add racking_model and module_type for ModelChain
-        array_params = {
-            'racking_model': 'open_rack',  # Required for temperature model
-            'module_type': 'glass_polymer'  # Required for temperature model
-        }
+        
+        # Add model type to parameters
+        temp_model_params['model'] = temp_model
         
         # Calculate PV system output
         system_output = calculate_pv_output(
             latitude, longitude, system_size, module_name,
-            inverter_name, temp_model_params, tilt, azimuth, gcr,
-            array_params=array_params
+            inverter_name, temp_model_params, tilt, azimuth, gcr
         )
 
         # Check if system_output contains an error
