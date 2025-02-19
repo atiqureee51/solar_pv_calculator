@@ -384,12 +384,12 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         
         # Calculate maximum modules per string based on voltage limits
         max_modules_per_string = int(float(inverter['Vdcmax']) / float(module['Voco']))
-        min_modules_per_string = math.ceil(float(inverter['Mppt_low']) / float(module['Vmp']))
+        min_modules_per_string = math.ceil(float(inverter['Mppt_low']) / float(module['Vmpo']))
         
         # Use optimal modules per string within limits
         modules_per_string = min(max_modules_per_string, 
                                max(min_modules_per_string, 
-                                   int((float(inverter['Vdcmax']) + float(inverter['Mppt_low'])) / (2 * float(module['Vmp'])))))
+                                   int((float(inverter['Vdcmax']) + float(inverter['Mppt_low'])) / (2 * float(module['Vmpo'])))))
 
         # Calculate maximum parallel strings per inverter based on power
         max_parallel_strings = int(float(inverter['Pdco']) / (float(module['STC']) * modules_per_string))
