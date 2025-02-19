@@ -363,76 +363,65 @@
                   <label class="form-label">Common Appliances</label>
                   <div class="appliance-list">
                     <!-- Air Conditioning -->
-                    <div class="appliance-item mb-2">
-                      <div class="form-check d-flex align-items-center">
+                    <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="" id="ac-check">
-                        <label class="form-check-label ms-2" for="ac-check">
-                          Air Conditioning
-                        </label>
-                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="ac-count" disabled>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                        </select>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
-                               placeholder="Hours/day" id="ac-hours" disabled>
-                      </div>
+                        <label class="form-check-label" for="ac-check">Air Conditioner</label>
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-select-sm ms-2" style="width: 80px;" id="ac-count" disabled>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Hours/day" id="ac-hours" disabled>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Watts" id="ac-watts" value="1500" disabled>
+                        </div>
                     </div>
+
                     <!-- Refrigerator -->
-                    <div class="appliance-item mb-2">
-                      <div class="form-check d-flex align-items-center">
+                    <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="" id="fridge-check">
-                        <label class="form-check-label ms-2" for="fridge-check">
-                          Refrigerator
-                        </label>
-                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="fridge-count" disabled>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                        </select>
-                        <span class="ms-2 small text-muted">24h/day</span>
-                      </div>
+                        <label class="form-check-label" for="fridge-check">Refrigerator</label>
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-select-sm ms-2" style="width: 80px;" id="fridge-count" disabled>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                            </select>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Watts" id="fridge-watts" value="150" disabled>
+                        </div>
                     </div>
-                    <!-- Lighting -->
-                    <div class="appliance-item mb-2">
-                      <div class="form-check d-flex align-items-center">
+
+                    <!-- Lights -->
+                    <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="" id="light-check">
-                        <label class="form-check-label ms-2" for="light-check">
-                          LED Lighting
-                        </label>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 80px;" 
-                               placeholder="# Bulbs" id="light-count" disabled>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
-                               placeholder="Hours/day" id="light-hours" disabled>
-                      </div>
+                        <label class="form-check-label" for="light-check">LED Lights</label>
+                        <div class="d-flex align-items-center">
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="# Bulbs" id="light-count" disabled>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Hours/day" id="light-hours" disabled>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Watts/bulb" id="light-watts" value="10" disabled>
+                        </div>
                     </div>
+
                     <!-- TV -->
-                    <div class="appliance-item mb-2">
-                      <div class="form-check d-flex align-items-center">
+                    <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" value="" id="tv-check">
-                        <label class="form-check-label ms-2" for="tv-check">
-                          Television
-                        </label>
-                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="tv-count" disabled>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                        </select>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
-                               placeholder="Hours/day" id="tv-hours" disabled>
-                      </div>
-                    </div>
-                    <!-- Custom Appliance -->
-                    <div class="appliance-item mb-2">
-                      <div class="form-check d-flex align-items-center">
-                        <input class="form-check-input" type="checkbox" value="" id="custom-check">
-                        <label class="form-check-label ms-2" for="custom-check">
-                          Custom Appliance
-                        </label>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
-                               placeholder="Watts" id="custom-watts" disabled>
-                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
-                               placeholder="Hours/day" id="custom-hours" disabled>
-                      </div>
+                        <label class="form-check-label" for="tv-check">Television</label>
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-select-sm ms-2" style="width: 80px;" id="tv-count" disabled>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Hours/day" id="tv-hours" disabled>
+                            <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;"
+                                placeholder="Watts" id="tv-watts" value="100" disabled>
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -678,13 +667,19 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <canvas id="ghi-chart"></canvas>
+                                        <div style="height: 400px;">
+                                            <canvas id="ghi-chart"></canvas>
+                                        </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <canvas id="temperature-chart"></canvas>
+                                        <div style="height: 400px;">
+                                            <canvas id="temperature-chart"></canvas>
+                                        </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <canvas id="wind-chart"></canvas>
+                                        <div style="height: 400px;">
+                                            <canvas id="wind-chart"></canvas>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

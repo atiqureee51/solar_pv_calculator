@@ -188,7 +188,7 @@ def calculate_financial_metrics(
             total_energy += year_energy
             year_savings = year_energy * current_rate
             
-            # Calculate net cashflow
+            # Calculate net cashflow (include maintenance cost)
             net_cashflow = year_savings - maintenance_cost
             cashflows.append(float(net_cashflow))
             cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
@@ -196,7 +196,6 @@ def calculate_financial_metrics(
             # Update for next year
             current_energy *= (1 - degradation)
             current_rate *= (1 + price_escalation)
-            annual_savings += year_savings
         
         # Calculate NPV
         npv = -total_capital_cost

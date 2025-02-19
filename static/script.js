@@ -1896,52 +1896,53 @@ function calculateTotalEnergy() {
     let totalWattHours = 0;
 
     // AC calculation
-    if (document.getElementById('ac-check')?.checked) {
-        const count = parseInt(document.getElementById('ac-count').value) || 0;
-        const hours = parseFloat(document.getElementById('ac-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.ac * count * hours;
+    if ($('#ac-check').is(':checked')) {
+        const acCount = parseInt($('#ac-count').val()) || 0;
+        const acHours = parseFloat($('#ac-hours').val()) || 0;
+        const acWatts = parseFloat($('#ac-watts').val()) || 1500;
+        totalWattHours += (acCount * acHours * acWatts);
     }
 
     // Refrigerator calculation (24 hours fixed)
-    if (document.getElementById('fridge-check')?.checked) {
-        const count = parseInt(document.getElementById('fridge-count').value) || 0;
-        totalWattHours += APPLIANCE_POWER.fridge * count * 24;
+    if ($('#fridge-check').is(':checked')) {
+        const fridgeCount = parseInt($('#fridge-count').val()) || 0;
+        const fridgeWatts = parseFloat($('#fridge-watts').val()) || 150;
+        totalWattHours += (fridgeCount * 24 * fridgeWatts);
     }
 
     // LED Lighting calculation
-    if (document.getElementById('light-check')?.checked) {
-        const count = parseInt(document.getElementById('light-count').value) || 0;
-        const hours = parseFloat(document.getElementById('light-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.light * count * hours;
+    if ($('#light-check').is(':checked')) {
+        const lightCount = parseInt($('#light-count').val()) || 0;
+        const lightHours = parseFloat($('#light-hours').val()) || 0;
+        const lightWatts = parseFloat($('#light-watts').val()) || 10;
+        totalWattHours += (lightCount * lightHours * lightWatts);
     }
 
     // TV calculation
-    if (document.getElementById('tv-check')?.checked) {
-        const count = parseInt(document.getElementById('tv-count').value) || 0;
-        const hours = parseFloat(document.getElementById('tv-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.tv * count * hours;
+    if ($('#tv-check').is(':checked')) {
+        const tvCount = parseInt($('#tv-count').val()) || 0;
+        const tvHours = parseFloat($('#tv-hours').val()) || 0;
+        const tvWatts = parseFloat($('#tv-watts').val()) || 100;
+        totalWattHours += (tvCount * tvHours * tvWatts);
     }
 
     // Custom appliance calculation
-    if (document.getElementById('custom-check')?.checked) {
-        const watts = parseFloat(document.getElementById('custom-watts').value) || 0;
-        const hours = parseFloat(document.getElementById('custom-hours').value) || 0;
-        totalWattHours += watts * hours;
+    if ($('#custom-check').is(':checked')) {
+        const watts = parseFloat($('#custom-watts').val()) || 0;
+        const hours = parseFloat($('#custom-hours').val()) || 0;
+        totalWattHours += (watts * hours);
     }
 
-    // Convert to kWh
-    const totalKwh = totalWattHours / 1000;
-    const totalKwhElement = document.getElementById('total-daily-kwh');
-    if (totalKwhElement) {
-        totalKwhElement.textContent = totalKwh.toFixed(2);
-    }
+    // Convert from watt-hours to kilowatt-hours
+    const dailyKwh = totalWattHours / 1000;
+    const monthlyKwh = dailyKwh * 30;
+    const yearlyKwh = dailyKwh * 365;
 
-    // Calculate recommended system size (assuming 4 peak sun hours and 20% system losses)
-    const recommendedSize = (totalKwh / 4) * 1.2;
-    const recommendedSizeElement = document.getElementById('recommended-system-size');
-    if (recommendedSizeElement) {
-        recommendedSizeElement.textContent = recommendedSize.toFixed(2) + ' kW';
-    }
+    return {
+        daily: dailyKwh,
+        monthly: monthlyKwh,
+        yearly: yearlyKwh
+    };
 }
 
 $(document).ready(function() {
