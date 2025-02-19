@@ -1104,6 +1104,12 @@ function handleCurrencyChange(currency) {
         const baseValue = $(this).data('base-value') || $(this).val();
         $(this).data('base-value', baseValue);
         $(this).val((baseValue * rate).toFixed(1));
+        
+        // Update labels
+        const label = $(this).closest('.form-group').find('label');
+        if (label.text().includes('/W')) {
+            label.text(label.text().replace(/[\$৳]\/W/, symbol + '/W'));
+        }
     });
     
     // Update main financial inputs
@@ -1114,9 +1120,12 @@ function handleCurrencyChange(currency) {
         $(field).val((baseValue * rate).toFixed(2));
     });
     
-    // Update currency symbols in the UI
+    // Update currency symbols
     const symbol = currency === 'BDT' ? '৳' : '$';
     $('.currency-symbol').text(symbol);
+    
+    // Recalculate total cost
+    calculateTotalInstalledCost();
 }
 
 // Drawing
@@ -2060,3 +2069,78 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 })
+
+// Initialize cost breakdown chart
+function initializeCostBreakdownChart() {
+    const ctx = document.getElementById('costBreakdownChart');
+    if (!ctx) return;
+    
+    if (costBreakdownChart) {
+        costBreakdownChart.destroy();
+    }
+    
+    costBreakdownChart = new Chart(ctx.getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: [
+                'Modules',
+                'Inverters',
+                'Balance of System',
+                'Installation',
+                'Soft Costs',
+                'Land'
+            ],
+            datasets: [{
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: [
+                    '#FF6384',
+                    '#36A2EB',
+                    '#FFCE56',
+                    '#4BC0C0',
+                    '#9966FF',
+                    '#FF9F40'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Currency handling
+function handleCurrencyChange(currency) {
+    const rate = currency === 'BDT' ? 110 : 1;
+    const symbol = currency === 'BDT' ? '৳' : '$';
+    
+    // Update cost component fields with base values
+    $('.cost-component').each(function() {
+        const baseValue = $(this).data('base-value') || parseFloat($(this).val()) / rate;
+        $(this).data('base-value', baseValue);
+        $(this).val((baseValue * rate).toFixed(2));
+        
+        // Update labels
+        const label = $(this).closest('.form-group').find('label');
+        if (label.text().includes('/W')) {
+            label.text(label.text().replace(/[\$৳]\/W/, symbol + '/W'));
+        }
+    });
+    
+    // Update main financial inputs
+    ['#installed_cost', '#maintenance_cost', '#electricity_rate'].forEach(field => {
+        const baseValue = $(field).data('base-value') || parseFloat($(field).val()) / rate;
+        $(field).data('base-value', baseValue);
+        $(field).val((baseValue * rate).toFixed(2));
+    });
+    
+    // Update currency symbols
+    $('.currency-symbol').text(symbol);
+    
+    // Recalculate total cost
+    calculateTotalInstalledCost();
+}
