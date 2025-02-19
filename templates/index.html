@@ -22,26 +22,12 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   
   <style>
+    
     #map {
       height: 400px;
       width: 100%;
       border-radius: 8px;
       margin-bottom: 20px;
-    }
-    
-    .text-muted {
-        color: rgba(255, 255, 255, 0.7) !important;
-    }
-        
-    .counter {
-        margin-bottom: 0;
-        font-size: 1.5rem;
-    }
-        
-    #system-size-difference {
-        display: block;
-        font-size: 0.8rem;
-        margin-top: 0.5rem;
     }
   </style>
 </head>
@@ -530,18 +516,8 @@
           <div class="col-md-3">
             <div class="card bg-success text-white">
               <div class="card-body">
-                <h5 class="card-title">System Size</h5>
-                <div class="row">
-                  <div class="col-md-6">
-                    <small class="text-muted">Desired</small>
-                    <h3 id="desired-system-size" class="counter"></h3>
-                  </div>
-                  <div class="col-md-6">
-                    <small class="text-muted">Actual</small>
-                    <h3 id="actual-system-size" class="counter"></h3>
-                  </div>
-                </div>
-                <small id="system-size-difference" class="text-muted mt-2"></small>
+                <h5 class="card-title"> System Size</h5>
+                <h3 id="system-size-display" class="counter"></h3>
               </div>
             </div>
           </div>

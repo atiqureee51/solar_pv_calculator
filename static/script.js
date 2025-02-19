@@ -1611,6 +1611,10 @@ function updateResults(systemAnalysis) {
                         plugins: {
                             legend: {
                                 position: 'bottom'
+                            },
+                            title: {
+                                display: true,
+                                text: 'System Cost Breakdown'
                             }
                         }
                     }
@@ -1741,28 +1745,46 @@ function updateResults(systemAnalysis) {
     // Display sizing warnings if any
     const warningsContainer2 = $('#sizing-warnings');
     warningsContainer2.empty();
+}
 
-    // Update system sizes
-    const desiredSize = parseFloat($('#system-size').val());
-    const actualSize = systemAnalysis.results.actual_system_size_kw;
-    
-    $('#desired-system-size').text(desiredSize.toFixed(1) + ' kW');
-    $('#actual-system-size').text(actualSize.toFixed(1) + ' kW');
-    
-    // Show difference if significant
-    const sizeDiff = Math.abs(desiredSize - actualSize);
-    if (sizeDiff > 0.1) {  // Only show if difference is more than 0.1 kW
-        const diffPercent = ((actualSize - desiredSize) / desiredSize * 100).toFixed(1);
-        const diffText = diffPercent > 0 ? 
-            `System is ${diffPercent}% larger than desired` : 
-            `System is ${Math.abs(diffPercent)}% smaller than desired`;
-        $('#system-size-difference').text(diffText);
-    } else {
-        $('#system-size-difference').text('');
+// Utility
+function showLoading() {
+    const loadingSpinner = document.getElementById('loading-spinner');
+    if (loadingSpinner) {
+        loadingSpinner.classList.remove('d-none');
     }
-    
-    // ---------- MIDDLE DASHBOARD ----------
-    $('#total-savings25').text(symbol + (systemAnalysis.results.annual_savings * 25).toFixed(0));
+}
+
+function hideLoading() {
+    const loadingSpinner = document.getElementById('loading-spinner');
+    if (loadingSpinner) {
+        loadingSpinner.classList.add('d-none');
+    }
+}
+
+function showError(message) {
+    const errorAlert = document.getElementById('error-alert');
+    if (errorAlert) {
+        errorAlert.textContent = message;
+        errorAlert.classList.remove('d-none');
+        setTimeout(() => {
+            errorAlert.classList.add('d-none');
+        }, 5000);
+    }
+}
+
+function showSuccess(message) {
+    const alertDiv = $('<div>')
+        .addClass('alert alert-success alert-dismissible fade show')
+        .attr('role', 'alert')
+        .html(`
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" ></button>
+        `);
+    $('#alerts').empty().append(alertDiv);
+    setTimeout(() => {
+        alertDiv.alert('close');
+    }, 5000);
 }
 
 // Update currency display
