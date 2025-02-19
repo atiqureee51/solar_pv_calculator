@@ -936,8 +936,7 @@ def calculate():
                 'effective_irradiance': system_output['effective_irradiance'],
                 'cell_temperature': system_output['cell_temperature'],
                 'monthly_energy': system_output['monthly_energy'],
-                'daily_energy': system_output['daily_energy'],
-                'actual_system_size_kw': system_size
+                'daily_energy': system_output['daily_energy']
             },
             'financial_metrics': {
                 'lcoe': financial_metrics['lcoe'],
@@ -961,7 +960,7 @@ def calculate():
             'city': '-',
             'country': '-'
         }
-
+        
         return jsonify(response)
         
     except Exception as e:

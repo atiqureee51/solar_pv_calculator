@@ -1489,43 +1489,15 @@ function updateResults(systemAnalysis) {
     $('#cost-savings').text(symbol + systemAnalysis.annual_savings.toFixed(0));
     $('#payback-period').text(systemAnalysis.simple_payback.toFixed(1) + ' yrs');
     $('#co2-savings').text(systemAnalysis.co2_savings.toFixed(1) + ' tons');
-    //  existing usage:
-    // 
-    $('#number-of-inverters').text(systemAnalysis.number_of_inverters);
-    //----------------------------------------------
-    // Second Dashboard: under the map
-    //----------------------------------------------
-
-    // 1) Total Savings (25 years):
-    // We multiply the annual_savings from financial_metrics by 25
-    const totalSavings25 = systemAnalysis.annual_savings * 25;
-    $('#total-savings25').text(symbol + `${totalSavings25.toFixed(2)}`);
-
-    // 2) System Size (kW):
-    // We'll display the final DC rating as "peak_dc_power" from system_analysis, 
-    // but you could also use the user input if you prefer.
-    const systemSizeKW = systemAnalysis.system_output.peak_dc_power; 
-    //$('#system-size').text(`${systemSizeKW.toFixed(2)} kW`);
-
-    // 3) LCOE:
-    const lcoeVal = systemAnalysis.lcoe;
-    $('#dashboard-lcoe').text(symbol + `${lcoeVal.toFixed(3)}/kWh`);
-
-    // 4) System Area (m²):
-    // From system_analysis.total_module_area
-    const totalArea = systemAnalysis.total_module_area;
-    $('#system-area').text(`${totalArea.toFixed(2)} m²`);
 
     // ---------- System Info -----------
-    $('#total-modules').text(
-        systemAnalysis.modules_per_string *
-        systemAnalysis.strings_per_inverter *
-        systemAnalysis.number_of_inverters
-    );
-    $('#modules-per-string').text(systemAnalysis.modules_per_string);
-    $('#strings-per-inverter').text(systemAnalysis.strings_per_inverter);
-    $('#number-of-inverters').text(systemAnalysis.number_of_inverters);
-    $('#dc-ac-ratio').text(systemAnalysis.dc_ac_ratio.toFixed(2));
+    $('#total-modules').text(systemAnalysis.system_output.total_modules);
+    $('#modules-series').text(systemAnalysis.system_output.modules_per_string);
+    $('#parallel-strings').text(systemAnalysis.system_output.strings_per_inverter);
+    $('#inverter-count').text(systemAnalysis.system_output.number_of_inverters);
+    $('#dc-ac-ratio').text(systemAnalysis.system_output.dc_ac_ratio.toFixed(2));
+    $('#module-type').text(systemAnalysis.system_output.module_type);
+    $('#inverter-type').text(systemAnalysis.system_output.inverter_type);
 
     // ---------- Site Information -----------
     const lat = $('#latitude').val();
@@ -1534,31 +1506,10 @@ function updateResults(systemAnalysis) {
     $('#site-city').text(systemAnalysis.city || '-');
     $('#site-country').text(systemAnalysis.country || '-');
     
-
-    const desiredSystemSize = parseFloat($('#system-size').val());
-    let statusMessage = 'Calculation completed successfully!';
-    let statusClass = 'alert-success';
-    
-    if (Math.abs(desiredSystemSize - systemSizeKW) > 1) { // If difference is more than 1 kW
-        if (systemSizeKW < desiredSystemSize) {
-            statusMessage = `Warning: System size reduced to ${systemSizeKW.toFixed(2)} kW due to inverter limitations. Consider using a larger inverter.`;
-            statusClass = 'alert-warning';
-        } else if (systemSizeKW > desiredSystemSize) {
-            statusMessage = `Warning: System size increased to ${systemSizeKW.toFixed(2)} kW due to inverter configuration. Consider adjusting the design.`;
-            statusClass = 'alert-warning';
-        }
-    }
-
-    $('#status-message')
-        .removeClass('d-none alert-primary alert-success alert-warning alert-danger')
-        .addClass(statusClass)
-        .text(statusMessage);
-
-    $('#system-size-display').text(`${systemSizeKW.toFixed(2)} kW`);
-    // Calculate averages from monthly/hourly data
-    const monthlyGHI = systemAnalysis.monthly_ghi || [];
-    const monthlyTemp = systemAnalysis.monthly_temperature || [];
-    const hourlyWind = systemAnalysis.hourly_wind_speed || [];
+    // Calculate weather averages
+    const monthlyGHI = systemAnalysis.weather_data.monthly_ghi || [];
+    const monthlyTemp = systemAnalysis.weather_data.monthly_temperature || [];
+    const hourlyWind = systemAnalysis.weather_data.hourly_wind_speed || [];
     
     const annualGHI = monthlyGHI.reduce((a, b) => a + b, 0);
     const avgTemp = monthlyTemp.length > 0 ? monthlyTemp.reduce((a, b) => a + b, 0) / monthlyTemp.length : 0;
@@ -1568,172 +1519,18 @@ function updateResults(systemAnalysis) {
     $('#avg-temp').text(`${avgTemp.toFixed(1)}°C`);
     $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
 
-    // ---------- System Performance -----------
+    // ---------- Financial Metrics -----------
+    $('#lcoe-value').text(symbol + systemAnalysis.financial_metrics.lcoe.toFixed(3) + '/kWh');
+    $('#npv-value').text(symbol + systemAnalysis.financial_metrics.npv.toFixed(0));
+    $('#payback-value').text(systemAnalysis.financial_metrics.payback_period.toFixed(1) + ' years');
 
-    $('#annual-production').text(`${(systemAnalysis.system_output.annual_energy/1000).toFixed(2)} MWh`);
-    
-    // Display Specific Yield (kWh/kWp)
-    const specificYield = systemAnalysis.system_output.specific_yield;
-    $('#specific-yield').text(specificYield ? `${specificYield.toFixed(2)} kWh/kWp` : '-');
-    
-    // Display Performance Ratio (as percentage)
-    const performanceRatio = systemAnalysis.system_output.performance_ratio;
-    $('#performance-ratio').text(performanceRatio ? `${(performanceRatio * 100).toFixed(2)}%` : '-');
-    
-    // Display Capacity Factor (as percentage)
-    const capacityFactor = systemAnalysis.system_output.capacity_factor;
-    $('#capacity-factor').text(capacityFactor ? `${(capacityFactor * 100).toFixed(2)}%` : '-');
+    // ---------- Area Information -----------
+    $('#total-area').text(`${systemAnalysis.system_output.total_module_area.toFixed(2)} m²`);
+    $('#module-area').text(`${systemAnalysis.system_output.module_area.toFixed(2)} m²`);
+    $('#possible-modules').text(systemAnalysis.system_output.total_modules);
 
-    // ---------- Energy Production -----
-    // annual_energy is kWh
-    $('#annual-energy').text((systemAnalysis.system_output.annual_energy / 1000).toFixed(2)); // MWh
-
-    $('#performance-ratio').text((systemAnalysis.system_output.performance_ratio * 100).toFixed(2));
-    $('#capacity-factor').text((systemAnalysis.system_output.capacity_factor * 100).toFixed(2));
-
-    // ---------- Area Info -------------
-    $('#module-area').text(systemAnalysis.system_output.module_area.toFixed(2));
-    $('#total-module-area').text(systemAnalysis.system_output.total_module_area.toFixed(2));
-    $('#total-modules').text(systemAnalysis.system_output.total_modules);
-    $('#modules-per-string').text(systemAnalysis.system_output.modules_per_string);
-    $('#strings-per-inverter').text(systemAnalysis.system_output.strings_per_inverter);
-    $('#number-of-inverters').text(systemAnalysis.system_output.number_of_inverters);
-
-    // ---------- System Details -------------
-    $('#actual-system-size').text(systemAnalysis.system_output.actual_system_size_kw.toFixed(2));
-    $('#dc-ac-ratio').text(systemAnalysis.system_output.dc_ac_ratio.toFixed(2));
-    $('#module-type').text(systemAnalysis.system_output.module_type);
-
-    // ---------- Temp & Irradiance -----
-    if (systemAnalysis.system_output.min_design_temp !== undefined && systemAnalysis.system_output.max_design_temp !== undefined) {
-        $('#min-design-temp').text(systemAnalysis.system_output.min_design_temp.toFixed(1));
-        $('#max-design-temp').text(systemAnalysis.system_output.max_design_temp.toFixed(1));
-    }
-    if (systemAnalysis.system_output.effective_irradiance !== undefined) {
-        $('#effective-irradiance').text(systemAnalysis.system_output.effective_irradiance.toFixed(1));
-    }
-    if (systemAnalysis.system_output.cell_temperature !== undefined) {
-        $('#cell-temperature').text(systemAnalysis.system_output.cell_temperature.toFixed(1));
-    }
-
-    // ---------- Financial -------------
-    if (systemAnalysis.financial_metrics) {
-        $('#lcoe-value').text(symbol + `${systemAnalysis.financial_metrics.lcoe.toFixed(3)}/kWh`);
-        $('#npv-value').text(symbol + `${systemAnalysis.financial_metrics.npv.toFixed(2)}`);
-        $('#payback-value').text(`${systemAnalysis.financial_metrics.payback_period.toFixed(1)} years`);
-
-        // Update cost breakdown pie chart
-        if (systemAnalysis.financial_metrics.cost_breakdown) {
-            const ctx = document.getElementById('costBreakdownChart');
-            let existingChart = Chart.getChart('costBreakdownChart');
-            if (existingChart) {
-                existingChart.destroy();
-            }
-
-            const costData = systemAnalysis.financial_metrics.cost_breakdown;
-            new Chart(ctx.getContext('2d'), {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(costData),
-                    datasets: [{
-                        data: Object.values(costData),
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.8)',
-                            'rgba(54, 162, 235, 0.8)',
-                            'rgba(255, 206, 86, 0.8)',
-                            'rgba(75, 192, 192, 0.8)',
-                            'rgba(153, 102, 255, 0.8)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'right'
-                        }
-                    }
-                }
-            });
-        }
-
-        // Update cashflow chart
-        if (systemAnalysis.financial_metrics.cumulative_cashflow) {
-            const ctx = document.getElementById('cashflow-chart');
-            let existingChart = Chart.getChart('cashflow-chart');
-            if (existingChart) {
-                existingChart.destroy();
-            }
-
-            new Chart(ctx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: systemAnalysis.financial_metrics.cumulative_cashflow.length}, (_, i) => `Year ${i}`),
-                    datasets: [{
-                        label: 'Cumulative Cash Flow',
-                        data: systemAnalysis.financial_metrics.cumulative_cashflow,
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Project Timeline'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Cumulative Cash Flow'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return symbol + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Project Cash Flow Over Time'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    return `Cash Flow: ${symbol}${value.toLocaleString()}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    }
-
-    // ---------- Weather charts --------
-    if (systemAnalysis.weather_data) {
-        updateWeatherCharts(systemAnalysis.weather_data);
-    }
-
-    // Update energy production charts
-    if (systemAnalysis.system_output.monthly_energy) {
-        const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        updateChart('monthlyProductionChart', monthlyLabels, systemAnalysis.system_output.monthly_energy,
-            'Monthly Energy Production', 'Month', 'Energy (kWh)');
-    }
-
-    if (systemAnalysis.system_output.daily_energy) {
-        const dailyLabels = Array.from({length: 365}, (_, i) => i + 1);
-        updateChart('dailyProductionChart', dailyLabels, systemAnalysis.system_output.daily_energy,
-            'Daily Energy Production', 'Day of Year', 'Energy (Wh)');
-    }
+    // Update results
+    updateResults(systemAnalysis);
 }
 
 function updateWeatherCharts(data) {
