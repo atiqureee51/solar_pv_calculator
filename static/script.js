@@ -330,222 +330,116 @@ $(document).ready(function() {
 
 // Chart initialization
 function initializeCharts() {
-    try {
-        // Create production chart
-        const productionCtx = document.getElementById('monthly-production-chart');
-        if (productionCtx) {
-            if (productionChart) {
-                productionChart.destroy();
-            }
-            productionChart = createProductionChart(productionCtx);
-        }
+    // Initialize empty charts
+    const chartConfigs = [
+        {id: 'monthly-production-chart', title: 'Monthly Energy Production'},
+        {id: 'daily-production-chart', title: 'Daily Energy Production'},
+        {id: 'ghi-chart', title: 'Global Horizontal Irradiance'},
+        {id: 'temperature-chart', title: 'Temperature'},
+        {id: 'wind-chart', title: 'Wind Speed'},
+        {id: 'cashflow-chart', title: 'Cash Flow'}
+    ];
 
-        // Create GHI chart
-        const ghiCtx = document.getElementById('ghi-chart');
-        if (ghiCtx) {
-            if (ghiChart) {
-                ghiChart.destroy();
-            }
-            ghiChart = createGHIChart(ghiCtx);
-        }
-
-        // Create temperature chart
-        const tempCtx = document.getElementById('temperature-chart');
-        if (tempCtx) {
-            if (temperatureChart) {
-                temperatureChart.destroy();
-            }
-            temperatureChart = createTemperatureChart(tempCtx);
-        }
-
-        // Create daily production chart
-        const dailyCtx = document.getElementById('daily-production-chart');
-        if (dailyCtx) {
-            if (dailyProductionChart) {
-                dailyProductionChart.destroy();
-            }
-            dailyProductionChart = createDailyProductionChart(dailyCtx);
-        }
-
-        // Create wind chart
-        const windCtx = document.getElementById('wind-chart');
-        if (windCtx) {
-            if (windChart) {
-                windChart.destroy();
-            }
-            windChart = createWindChart(windCtx);
-        }
-
-        // Create cashflow chart
-        const cashflowCtx = document.getElementById('cashflow-chart');
-        if (cashflowCtx) {
-            if (cashflowChart) {
-                cashflowChart.destroy();
-            }
-            cashflowChart = createCashflowChart(cashflowCtx);
-        }
-
-        // Create cost breakdown chart
-        const costBreakdownCtx = document.getElementById('cost-breakdown-chart');
-        if (costBreakdownCtx) {
-            if (costBreakdownChart) {
-                costBreakdownChart.destroy();
-            }
-            costBreakdownChart = createCostBreakdownChart(costBreakdownCtx);
-        }
-
-    } catch (error) {
-        console.error('Error initializing charts:', error);
-    }
-}
-
-// Chart creation functions
-function createProductionChart(canvas) {
-    return new Chart(canvas, {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Monthly Energy Production (kWh)',
-                data: Array(12).fill(0),
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgb(75, 192, 192)',
-                borderWidth: 1
-            }]
-        },
-        options: { responsive: true }
+    chartConfigs.forEach(config => {
+        createEmptyChart(config.id, config.title);
     });
-}
 
-function createDailyProductionChart(canvas) {
-    const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: hours,
-            datasets: [{
-                label: 'Daily Energy Profile (kW)',
-                data: Array(24).fill(0),
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgb(54, 162, 235)',
-                borderWidth: 1,
-                fill: true
-            }]
-        },
-        options: { responsive: true }
-    });
-}
+    // Initialize cost breakdown chart separately since it's a pie chart
+    const costBreakdownCtx = document.getElementById('cost-breakdown-chart');
+    if (costBreakdownCtx) {
+        // Destroy existing chart if it exists
+        let existingChart = Chart.getChart('cost-breakdown-chart');
+        if (existingChart) {
+            existingChart.destroy();
+        }
 
-function createGHIChart(canvas) {
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Solar Irradiance (kWh/m²)',
-                data: Array(12).fill(0),
-                borderColor: 'rgb(255, 159, 64)',
-                tension: 0.1
-            }]
-        },
-        options: { responsive: true }
-    });
-}
-
-function createTemperatureChart(canvas) {
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Temperature (°C)',
-                data: Array(12).fill(0),
-                borderColor: 'rgb(255, 99, 132)',
-                tension: 0.1
-            }]
-        },
-        options: { responsive: true }
-    });
-}
-
-function createWindChart(canvas) {
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Wind Speed (m/s)',
-                data: Array(12).fill(0),
-                borderColor: 'rgb(54, 162, 235)',
-                tension: 0.1
-            }]
-        },
-        options: { responsive: true }
-    });
-}
-
-function createCashflowChart(canvas) {
-    return new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: Array.from({length: 26}, (_, i) => `Year ${i}`),
-            datasets: [{
-                label: 'Cumulative Cash Flow',
-                data: Array(26).fill(0),
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.1)',
-                fill: true
-            }]
-        },
-        options: { 
-            responsive: true,
-            scales: {
-                y: {
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                        }
+        new Chart(costBreakdownCtx, {
+            type: 'pie',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'System Cost Breakdown'
                     }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
-function createCostBreakdownChart(canvas) {
-    return new Chart(canvas, {
-        type: 'pie',
+function createEmptyChart(canvasId, title) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) {
+        console.error(`Canvas with id ${canvasId} not found`);
+        return;
+    }
+
+    // Destroy existing chart if it exists
+    let existingChart = Chart.getChart(canvasId);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    new Chart(ctx, {
+        type: 'line',
         data: {
-            labels: [
-                'Modules',
-                'Inverters',
-                'Balance of System',
-                'Installation',
-                'Soft Costs',
-                'Land'
-            ],
+            labels: [],
             datasets: [{
-                data: [0, 0, 0, 0, 0, 0],
-                backgroundColor: [
-                    '#FF6384',
-                    '#36A2EB',
-                    '#FFCE56',
-                    '#4BC0C0',
-                    '#9966FF',
-                    '#FF9F40'
-                ]
+                label: title,
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1,
+                fill: true
             }]
         },
         options: {
             responsive: true,
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Value'
+                    }
+                }
+            },
             plugins: {
-                legend: {
-                    position: 'bottom'
+                title: {
+                    display: true,
+                    text: title
                 }
             }
         }
     });
 }
+
+// Call initializeCharts when document is ready
+$(document).ready(function() {
+    initializeCharts();
+});
 
 // Initialize everything
 $(document).ready(function() {
@@ -2096,80 +1990,4 @@ function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
             }
         }
     });
-}
-
-// Initialize all charts
-function initializeCharts() {
-    // Production Charts
-    createEmptyChart('monthly-production-chart', 'Monthly Energy Production');
-    createEmptyChart('daily-production-chart', 'Daily Energy Production');
-    
-    // Weather Charts
-    createEmptyChart('ghi-chart', 'Monthly Global Horizontal Irradiance');
-    createEmptyChart('temperature-chart', 'Monthly Average Temperature');
-    createEmptyChart('wind-chart', 'Monthly Average Wind Speed');
-    
-    // Financial Charts
-    createEmptyChart('cost-breakdown-chart', 'System Cost Breakdown', 'pie');
-    createEmptyChart('cashflow-chart', 'Project Cash Flow Over Time');
-}
-
-function createEmptyChart(canvasId, title, type = 'line') {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) {
-        console.error(`Canvas with id ${canvasId} not found`);
-        return;
-    }
-
-    // Destroy existing chart if it exists
-    let existingChart = Chart.getChart(canvasId);
-    if (existingChart) {
-        existingChart.destroy();
-    }
-
-    const config = {
-        type: type,
-        data: {
-            labels: [],
-            datasets: [{
-                label: title,
-                data: [],
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                }
-            }
-        }
-    };
-
-    if (type === 'pie') {
-        config.options.plugins.legend = {
-            position: 'right'
-        };
-    } else {
-        config.options.scales = {
-            x: {
-                display: true,
-                title: {
-                    display: true,
-                    text: 'Time'
-                }
-            },
-            y: {
-                display: true,
-                beginAtZero: true
-            }
-        };
-    }
-
-    new Chart(ctx, config);
 }
