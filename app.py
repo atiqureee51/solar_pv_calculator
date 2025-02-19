@@ -168,21 +168,6 @@ def calculate_financial_metrics(
     project_life, fed_credit, st_credit, interest_rate,
     degradation=0.005, price_escalation=0.025
 ):
-    """
-    Compute financial metrics for PV system.
-    
-    Parameters:
-        annual_energy: float - First year energy production in kWh
-        installed_cost: float - Total installed cost in currency units
-        electricity_rate: float - Cost of electricity in currency units per kWh
-        maintenance_cost: float - Annual maintenance cost in currency units
-        project_life: int - Project lifetime in years
-        fed_credit: float - Federal tax credit as decimal (e.g., 0.26 for 26%)
-        st_credit: float - State tax credit as decimal
-        interest_rate: float - Annual interest rate as decimal
-        degradation: float - Annual panel degradation rate (default 0.5%)
-        price_escalation: float - Annual electricity price escalation (default 2.5%)
-    """
     try:
         # Initialize arrays for cash flows
         cashflows = []
@@ -224,7 +209,7 @@ def calculate_financial_metrics(
         
         # Calculate simple payback period (using first year savings)
         first_year_savings = annual_energy * electricity_rate
-        payback = total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf')
+        payback_period = total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf')
         
         # Calculate LCOE
         total_cost = total_capital_cost
@@ -242,13 +227,13 @@ def calculate_financial_metrics(
         return {
             'annual_energy_kwh': float(avg_annual_energy),
             'annual_savings': float(avg_annual_savings),
-            'simple_payback': float(payback),
+            'payback_period': float(payback_period),
             'lcoe': float(lcoe),
             'co2_savings': float(co2_savings),
-            'net_present_value': float(npv),
+            'npv': float(npv),
             'total_capital_cost': float(total_capital_cost),
             'total_savings': float(annual_savings - total_capital_cost - (maintenance_cost * project_life)),
-            'cumulative_cashflow': [float(x) for x in cumulative_cashflow],
+            'cashflow': [float(x) for x in cumulative_cashflow],
             'annual_cashflow': [float(-total_capital_cost)] + [float(x) for x in cashflows]
         }
     except Exception as e:
@@ -256,13 +241,13 @@ def calculate_financial_metrics(
         return {
             'annual_energy_kwh': float(annual_energy),
             'annual_savings': 0.0,
-            'simple_payback': float('inf'),
+            'payback_period': float('inf'),
             'lcoe': 0.0,
             'co2_savings': 0.0,
-            'net_present_value': 0.0,
+            'npv': 0.0,
             'total_capital_cost': float(installed_cost),
             'total_savings': 0.0,
-            'cumulative_cashflow': [0.0],
+            'cashflow': [0.0],
             'annual_cashflow': [0.0]
         }
 
@@ -932,15 +917,28 @@ def calculate():
         # Final response structure
         response = {
             'success': True,
-            'system_output': system_output,
-            'financial_metrics': financial_metrics,
-            'weather_data': weather_data,
-            'annual_savings': financial_metrics['annual_savings'],
-            'lcoe': financial_metrics['lcoe'],
-            'simple_payback': financial_metrics['payback_period'],
-            'co2_savings': financial_metrics['co2_savings'],  # Make sure this is calculated
-            'city': '-',
-            'country': '-'
+            'results': {
+                'peak_dc_power': system_output['peak_dc_power'],
+                'peak_ac_power': system_output['peak_ac_power'],
+                'capacity_factor': system_output['capacity_factor'],
+                'performance_ratio': system_output['performance_ratio'],
+                'annual_energy': system_output['annual_energy'],
+                'specific_yield': system_output['specific_yield'],
+                'module_cost': module_cost * installed_cost,
+                'inverter_cost': inverter_cost * installed_cost,
+                'bos_cost': bos_cost * installed_cost,
+                'installation_cost': installation_cost * installed_cost,
+                'soft_cost': soft_cost * installed_cost,
+                'lcoe': financial_metrics['lcoe'],
+                'npv': financial_metrics['npv'],
+                'payback_period': financial_metrics['payback_period'],
+                'monthly_energy': system_output['monthly_energy'],
+                'daily_profile': system_output['daily_energy'],
+                'monthly_ghi': weather_data['monthly_ghi'],
+                'monthly_temperature': weather_data['monthly_temperature'],
+                'monthly_wind_speed': weather_data['monthly_wind_speed'],
+                'cashflow': financial_metrics['cashflow']
+            }
         }
         
         return jsonify(response)
