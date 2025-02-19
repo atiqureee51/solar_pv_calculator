@@ -429,7 +429,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         system_size_w = max(system_size_kw * 1000, 1)  # Minimum 1W
         modules_needed = math.ceil(system_size_w / max(float(module.get('STC', 0)), 0.1))  # Minimum 0.1W
         
-        # Calculate string sizing
+        # Calculate string sizing with safety checks
         vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
         voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
         
@@ -929,94 +929,90 @@ def calculate():
     try:
         data = request.get_json()
         
-        # Get basic parameters with safety defaults
-        module_name = data.get('module')
-        inverter_name = data.get('inverter')
+        # Extract system parameters
+        latitude = float(data.get('latitude', 23.8103))
+        longitude = float(data.get('longitude', 90.4125))
+        system_size = float(data.get('system_size', 5))
+        module_name = data.get('module_name', 'Canadian_Solar_Inc__CS1U_410MS')
+        inverter_name = data.get('inverter_name', 'SMA_America__SB7_7_1SP_US_41__240V_')
+        tilt = float(data.get('tilt', 23))
+        azimuth = float(data.get('azimuth', 180))
+        gcr = float(data.get('gcr', 0.4))
+        system_type = data.get('system_type', 'ground-mounted')
         
-        # Safety check for module and inverter
-        if not module_name or not inverter_name:
-            return jsonify({
-                "success": False,
-                "error": "Module and inverter must be specified"
-            }), 400
-            
-        # Get module and inverter details
-        module = get_module_details(module_name)
-        inverter = get_inverter_details(inverter_name)
+        # Extract financial parameters
+        installed_cost = float(data.get('installed_cost', 5000))
+        electricity_rate = float(data.get('electricity_rate', 0.12))
+        project_life = int(data.get('project_life', 25))
+        maintenance_cost = float(data.get('maintenance_cost', 15))
+        degradation = float(data.get('degradation', 0.005))
+        price_escalation = float(data.get('price_escalation', 0.025))
+        fed_credit = float(data.get('federal_tax_credit', 0.30))
+        st_credit = float(data.get('state_tax_credit', 0))
+        interest_rate = float(data.get('interest_rate', 0.06))
         
-        if not module or not inverter:
-            return jsonify({
-                "success": False,
-                "error": "Module or inverter information not found"
-            }), 400
-            
-        # Get and validate system size with safety defaults
-        try:
-            system_size = max(float(data.get('system_size', 5.0)), 0.1)  # Minimum 0.1 kW
-            gcr = max(float(data.get('gcr', 0.4)), 0.1)  # Minimum 0.1 GCR
-        except (ValueError, TypeError):
-            return jsonify({
-                "success": False,
-                "error": "Invalid system size or GCR value"
-            }), 400
-            
-        # Check sizing compatibility
-        sizing_check = check_sizing_compatibility(module_name, inverter_name, system_size)
-        if not sizing_check.get('compatible', False):
-            return jsonify({
-                "success": False,
-                "error": sizing_check.get('error', 'Incompatible system sizing')
-            }), 400
-            
-        # Store sizing status for response
-        sizing_status = sizing_check
-            
-        # Build temperature model parameters with defaults
-        temp_model = data.get('temp_model', 'sapm')
-        mount_type = data.get('mount_type', 'open_rack_glass_glass')
+        # Get cost breakdown if provided
+        cost_breakdown = data.get('cost_breakdown', {})
+        module_cost = cost_breakdown.get('moduleCost', 0.35)
+        inverter_cost = cost_breakdown.get('inverterCost', 0.10)
+        bos_cost = cost_breakdown.get('bosCost', 0.325)
+        installation_cost = cost_breakdown.get('installationCost', 0.44)
+        soft_cost = cost_breakdown.get('softCost', 0.275)
+        land_cost = cost_breakdown.get('landCost', 0)
 
-        temp_params = TEMPERATURE_MODEL_PARAMETERS.get(temp_model, {}).get(
-            mount_type,
-            {'a': -3.56, 'b': -0.075, 'deltaT': 3} if temp_model == 'sapm' else {'u_c': 29.0, 'u_v': 0.0}
+        # Get temperature model parameters based on system type
+        temp_model_params = SYSTEM_TYPE_DEFAULTS.get(system_type, SYSTEM_TYPE_DEFAULTS['ground-mounted'])
+        
+        # Calculate PV system output
+        system_output = calculate_pv_output(
+            latitude, longitude, system_size, module_name,
+            inverter_name, temp_model_params, tilt, azimuth, gcr
         )
         
-        temperature_model_parameters = {
-            'model': temp_model,
-            **temp_params
+        if not system_output:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to calculate PV system output'
+            })
+
+        # Calculate financial metrics
+        financial_metrics = calculate_financial_metrics(
+            system_output['annual_energy'],
+            installed_cost,
+            electricity_rate,
+            maintenance_cost,
+            project_life,
+            fed_credit,
+            st_credit,
+            interest_rate,
+            degradation,
+            price_escalation
+        )
+        
+        # Combine all results
+        results = {
+            'success': True,
+            'system_output': system_output,
+            'financial_metrics': financial_metrics,
+            'cost_breakdown': {
+                'module_cost': module_cost * system_size * 1000,
+                'inverter_cost': inverter_cost * system_size * 1000,
+                'bos_cost': bos_cost * system_size * 1000,
+                'installation_cost': installation_cost * system_size * 1000,
+                'soft_cost': soft_cost * system_size * 1000,
+                'land_cost': land_cost,
+                'total_cost': installed_cost
+            }
         }
-
-        # Calculate PV system performance with safety checks
-        performance_data = calculate_pv_output(
-            latitude=float(data.get('latitude', 23.8103)),
-            longitude=float(data.get('longitude', 90.4125)),
-            system_size_kw=system_size,
-            module_name=module_name,
-            inverter_name=inverter_name,
-            temperature_model_parameters=temperature_model_parameters,
-            tilt=float(data.get('tilt', 30)),
-            azimuth=float(data.get('azimuth', 180)),
-            gcr=gcr
-        )
         
-        if not performance_data or 'error' in performance_data:
-            return jsonify({
-                "success": False,
-                "error": performance_data.get('error', 'Failed to calculate PV system performance')
-            }), 400
-
-        return jsonify({
-            "success": True,
-            "system_analysis": performance_data,
-            "sizing_status": sizing_status
-        })
-
+        return jsonify(results)
+        
     except Exception as e:
         print(f"Error in calculate route: {str(e)}")
         return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 400
-
+            'success': False,
+            'error': str(e)
+        })
 
 def get_location_info(lat, lon):
     """Get city and country information from coordinates"""

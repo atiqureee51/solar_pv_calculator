@@ -634,7 +634,7 @@ $(document).ready(function() {
         if (!isNaN(systemSize) && $('#sizing-method').val() === 'system-size') {
             const moduleArea = 2.0;  // m²
             const gcr = parseFloat($('#gcr').val()) || 0.4;
-            const area = (systemSize * 1000 / 400) * moduleArea / gcr;  // 400W is default module power
+            const area = (systemSize * 1000 / 400) * moduleArea / gcr;
             $('#area').val(area.toFixed(2));
         }
     });
@@ -860,7 +860,7 @@ function updateCostBreakdown() {
 }
 
 function updateTotalCost() {
-    const systemSize = parseFloat($('#system-size').val()) || 5;
+    const systemSize = parseFloat($('#system-size').val()) || 1;
     let totalCost = 0;
     
     $('.cost-component').each(function() {
@@ -1200,73 +1200,59 @@ function updatePVsystParameters() {
 
 // Submit + AJAX
 async function handleFormSubmit(event) {
-    event.preventDefault();
-    showLoading();
-
-    const costs = calculateTotalInstalledCost();
+    if (event) {
+        event.preventDefault();
+    }
     
-    const formData = {
-        // System parameters
-        sizing_method: document.getElementById('sizing-method').value,
-        system_size: document.getElementById('system-size').value,
-        area: document.getElementById('area').value,
-        latitude: parseFloat($('#latitude').val()),
-        longitude: parseFloat($('#longitude').val()),
-        tilt: parseFloat($('#tilt').val()) || 30,
-        azimuth: parseFloat($('#azimuth').val()) || 180,
-        albedo: parseFloat($('#albedo').val()) || 0.2,
-        losses: parseFloat($('#losses').val()) || 14,
-        
-        // Module and inverter selection
-        module: $('#module').val(),
-        inverter: $('#inverter').val(),
-        
-        // System configuration
-        system_type: $('#system-type').val(),
-        mount_type: ($('#temp-model-family').val() === 'pvsyst')
-            ? $('#pvsyst-type').val()
-            : $('#sapm-type').val(),
-        
-        temp_model: $('#temp-model-family').val() || 'sapm',
-        
-        // Component costs from breakdown
-        module_cost: costs.moduleCost,
-        inverter_cost: costs.inverterCost,
-        bos_cost: costs.bosCost,
-        installation_cost: costs.installationCost,
-        soft_cost: costs.softCost,
-        land_cost: costs.landCost,
-        
-        // Financial parameters
-        electricity_rate: parseFloat($('#electricity-rate').val()) || 0.12,
-        maintenance_cost: parseFloat($('#maintenance-cost').val()) || 15,
-        degradation: parseFloat($('#degradation').val()) || 0.005,
-        price_escalation: parseFloat($('#price-escalation').val()) || 0.025,
-        project_life: parseInt($('#project-life').val()) || 25,
-        interest_rate: parseFloat($('#interest-rate').val()) || 0.06,
-        federal_tax_credit: parseFloat($('#federal-tax-credit').val()) || 0.30,
-        state_tax_credit: parseFloat($('#state-tax-credit').val()) || 0
-    };
-
-    console.log('Form Data:', formData);
-
+    showLoading();
+    
     try {
-        const response = await $.ajax({
-            url: '/calculate',
+        // Get cost breakdown
+        const costBreakdown = calculateTotalInstalledCost();
+        
+        // Prepare form data
+        const formData = {
+            latitude: parseFloat($('#latitude').val()),
+            longitude: parseFloat($('#longitude').val()),
+            system_size: parseFloat($('#system-size').val()),
+            module_name: $('#module-select').val(),
+            inverter_name: $('#inverter-select').val(),
+            tilt: parseFloat($('#tilt').val()),
+            azimuth: parseFloat($('#azimuth').val()),
+            gcr: parseFloat($('#gcr').val()),
+            system_type: $('#system-type').val(),
+            installed_cost: parseFloat($('#installed_cost').val()),
+            electricity_rate: parseFloat($('#electricity_rate').val()),
+            project_life: parseInt($('#project_life').val()),
+            maintenance_cost: parseFloat($('#maintenance_cost').val()),
+            degradation: parseFloat($('#degradation').val()) / 100,
+            price_escalation: parseFloat($('#price_escalation').val()) / 100,
+            // Include cost breakdown
+            cost_breakdown: costBreakdown
+        };
+
+        // Send to server
+        const response = await fetch('/calculate', {
             method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(formData)
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
         });
 
-        if (response.success) {
-            updateResults(response.system_analysis);
-            hideLoading();
-        } else {
-            showError(response.error || 'Calculation failed');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        updateResults(data);
+        hideLoading();
+        showSuccess('Calculation completed successfully!');
+        
     } catch (error) {
         console.error('Error:', error);
-        showError(error.responseJSON?.error || 'Failed to calculate system performance');
+        hideLoading();
+        showError('Failed to calculate system performance. Please check your inputs and try again.');
     }
 }
 
@@ -1281,48 +1267,42 @@ function calculateTotalInstalledCost() {
     const currency = $('#currency').val();
     const rate = currency === 'BDT' ? 110 : 1; // Conversion rate
     const symbol = currency === 'BDT' ? '৳' : '$';
+    const systemSize = parseFloat($('#system-size').val()) || 1;
 
-    // Get all cost components
-    const moduleCost = parseFloat($('#module_cost').val()) || 38.5;
-    const inverterCost = parseFloat($('#inverter_cost').val()) || 11;
-    const rackingCost = parseFloat($('#racking_cost').val()) || 11;
-    const wiringCost = parseFloat($('#wiring_cost').val()) || 16.5;
-    const disconnectCost = parseFloat($('#disconnect_cost').val()) || 5.5;
-    const laborCost = parseFloat($('#labor_cost').val()) || 22;
-    const installOverheadCost = parseFloat($('#install_overhead_cost').val()) || 11;
-    const profitCost = parseFloat($('#profit_cost').val()) || 11;
-    const permittingCost = parseFloat($('#permitting_cost').val()) || 11;
-    const inspectionCost = parseFloat($('#inspection_cost').val()) || 5.5;
-    const interconnectionCost = parseFloat($('#interconnection_cost').val()) || 11;
+    // Get all cost components (in $/W)
+    const moduleCost = parseFloat($('#module_cost').val()) || 0.35;
+    const inverterCost = parseFloat($('#inverter_cost').val()) || 0.10;
+    const rackingCost = parseFloat($('#racking_cost').val()) || 0.11;
+    const wiringCost = parseFloat($('#wiring_cost').val()) || 0.165;
+    const disconnectCost = parseFloat($('#disconnect_cost').val()) || 0.055;
+    const laborCost = parseFloat($('#labor_cost').val()) || 0.22;
+    const installOverheadCost = parseFloat($('#install_overhead_cost').val()) || 0.11;
+    const profitCost = parseFloat($('#profit_cost').val()) || 0.11;
+    const permittingCost = parseFloat($('#permitting_cost').val()) || 0.11;
+    const inspectionCost = parseFloat($('#inspection_cost').val()) || 0.055;
+    const interconnectionCost = parseFloat($('#interconnection_cost').val()) || 0.11;
     const landCost = parseFloat($('#land_cost').val()) || 0;
 
-    // Calculate total cost per watt
+    // Calculate subtotals
+    const bosCost = rackingCost + wiringCost + disconnectCost;
+    const installationCost = laborCost + installOverheadCost + profitCost;
+    const softCost = permittingCost + inspectionCost + interconnectionCost;
+    
+    // Calculate total cost per watt (in USD)
     const totalCostPerWatt = (
         moduleCost + 
         inverterCost + 
-        rackingCost + 
-        wiringCost + 
-        disconnectCost + 
-        laborCost + 
-        installOverheadCost + 
-        profitCost + 
-        permittingCost + 
-        inspectionCost + 
-        interconnectionCost
+        bosCost + 
+        installationCost + 
+        softCost
     );
 
-    // Calculate costs in USD
-    const moduleCostUSD = moduleCost / rate;
-    const inverterCostUSD = inverterCost / rate;
-    const bosCostUSD = (rackingCost + wiringCost + disconnectCost) / rate;
-    const installationCostUSD = (laborCost + installOverheadCost + profitCost) / rate;
-    const softCostUSD = (permittingCost + inspectionCost + interconnectionCost) / rate;
-    const landCostUSD = landCost; // Land cost is always in USD
-
-    // Update the installed cost field
-    const systemSize = parseFloat($('#system-size').val()) || 1;
-    const totalCost = (totalCostPerWatt * systemSize * 1000) / rate + landCostUSD;
-    $('#installed-cost').val(totalCost.toFixed(2));
+    // Calculate total system cost
+    const totalSystemCost = (totalCostPerWatt * systemSize * 1000) + landCost;
+    
+    // Update installed cost field with the total in selected currency
+    const displayCost = currency === 'BDT' ? totalSystemCost * rate : totalSystemCost;
+    $('#installed_cost').val(displayCost.toFixed(2));
 
     // Update cost breakdown chart
     const costData = {
@@ -1332,16 +1312,16 @@ function calculateTotalInstalledCost() {
             'Balance of System',
             'Installation',
             'Soft Costs',
-            'Land Cost'
+            'Land'
         ],
         datasets: [{
             data: [
-                (moduleCostUSD * systemSize * 1000).toFixed(2),
-                (inverterCostUSD * systemSize * 1000).toFixed(2),
-                (bosCostUSD * systemSize * 1000).toFixed(2),
-                (installationCostUSD * systemSize * 1000).toFixed(2),
-                (softCostUSD * systemSize * 1000).toFixed(2),
-                landCostUSD.toFixed(2)
+                (moduleCost * systemSize * 1000).toFixed(2),
+                (inverterCost * systemSize * 1000).toFixed(2),
+                (bosCost * systemSize * 1000).toFixed(2),
+                (installationCost * systemSize * 1000).toFixed(2),
+                (softCost * systemSize * 1000).toFixed(2),
+                landCost.toFixed(2)
             ],
             backgroundColor: [
                 '#FF6384',
@@ -1380,14 +1360,15 @@ function calculateTotalInstalledCost() {
         }
     });
 
+    // Return the cost breakdown for form submission
     return {
-        moduleCost: moduleCostUSD,
-        inverterCost: inverterCostUSD,
-        bosCost: bosCostUSD,
-        installationCost: installationCostUSD,
-        softCost: softCostUSD,
-        landCost: landCostUSD,
-        totalCost: totalCost
+        moduleCost: moduleCost,
+        inverterCost: inverterCost,
+        bosCost: bosCost,
+        installationCost: installationCost,
+        softCost: softCost,
+        landCost: landCost,
+        totalCost: totalSystemCost
     };
 }
 
@@ -1408,17 +1389,17 @@ $('#costBreakdownModal').on('show.bs.modal', function () {
     
     // Set initial values if not already set
     if (!$('#module_cost').val()) {
-        $('#module_cost').val((38.5 * rate).toFixed(2));
-        $('#inverter_cost').val((11 * rate).toFixed(2));
-        $('#racking_cost').val((11 * rate).toFixed(2));
-        $('#wiring_cost').val((16.5 * rate).toFixed(2));
-        $('#disconnect_cost').val((5.5 * rate).toFixed(2));
-        $('#labor_cost').val((22 * rate).toFixed(2));
-        $('#install_overhead_cost').val((11 * rate).toFixed(2));
-        $('#profit_cost').val((11 * rate).toFixed(2));
-        $('#permitting_cost').val((11 * rate).toFixed(2));
-        $('#inspection_cost').val((5.5 * rate).toFixed(2));
-        $('#interconnection_cost').val((11 * rate).toFixed(2));
+        $('#module_cost').val((0.35 * rate).toFixed(2));
+        $('#inverter_cost').val((0.10 * rate).toFixed(2));
+        $('#racking_cost').val((0.11 * rate).toFixed(2));
+        $('#wiring_cost').val((0.165 * rate).toFixed(2));
+        $('#disconnect_cost').val((0.055 * rate).toFixed(2));
+        $('#labor_cost').val((0.22 * rate).toFixed(2));
+        $('#install_overhead_cost').val((0.11 * rate).toFixed(2));
+        $('#profit_cost').val((0.11 * rate).toFixed(2));
+        $('#permitting_cost').val((0.11 * rate).toFixed(2));
+        $('#inspection_cost').val((0.055 * rate).toFixed(2));
+        $('#interconnection_cost').val((0.11 * rate).toFixed(2));
     }
     
     calculateTotalInstalledCost();
@@ -2064,89 +2045,3 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 })
-
-// Update cost breakdown chart
-function updateCostBreakdown(costBreakdown) {
-    if (!costBreakdown) return;
-    
-    const costData = {
-        labels: Object.keys(costBreakdown),
-        datasets: [{
-            data: Object.values(costBreakdown),
-            backgroundColor: [
-                '#FF6384',
-                '#36A2EB',
-                '#FFCE56',
-                '#4BC0C0',
-                '#9966FF'
-            ]
-        }]
-    };
-
-    if (costBreakdownChart) {
-        costBreakdownChart.destroy();
-    }
-
-    const ctx = document.getElementById('costBreakdownChart').getContext('2d');
-    costBreakdownChart = new Chart(ctx, {
-        type: 'pie',
-        data: costData,
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.raw;
-                            return `${context.label}: $${value.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Handle region change
-function handleRegionChange(region) {
-    const defaults = getDefaultsForRegion(region);
-    
-    // Update map view and marker
-    if (map) {
-        map.setView([defaults.lat, defaults.lon], defaults.zoom);
-        marker.setLatLng([defaults.lat, defaults.lon]);
-    }
-    
-    // Update form values
-    $('#latitude').val(defaults.lat.toFixed(6));
-    $('#longitude').val(defaults.lon.toFixed(6));
-    
-    // Update currency if needed
-    if (region === 'bangladesh' && $('#currency').val() !== 'BDT') {
-        $('#currency').val('BDT').trigger('change');
-    } else if (region === 'usa' && $('#currency').val() !== 'USD') {
-        $('#currency').val('USD').trigger('change');
-    }
-}
-
-// Event handlers for region and currency
-$(document).ready(function() {
-    $('#region').change(function() {
-        const region = $(this).val();
-        handleRegionChange(region);
-    });
-    
-    $('#currency').change(function() {
-        const currency = $(this).val();
-        const rate = currency === 'BDT' ? 110 : 1;
-        const electricityUSD = parseFloat($('#electricity_rate').val()) / rate;
-        if (electricityUSD) {
-            $('#electricity_rate').val((electricityUSD * rate).toFixed(2));
-        }
-        // Recalculate costs with new currency
-        calculateTotalInstalledCost();
-    });
-});
