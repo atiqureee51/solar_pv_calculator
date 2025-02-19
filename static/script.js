@@ -1440,9 +1440,9 @@ function updateResults(systemAnalysis) {
     $('#site-location').text(`${lat.toFixed(4)}°, ${lon.toFixed(4)}°`);
     $('#site-city').text(systemAnalysis.results.city || '-');
     $('#site-country').text(systemAnalysis.results.country || '-');
-    $('#annual-ghi').text(`${systemAnalysis.results.annual_ghi.toFixed(0)} kWh/m²`);
-    $('#avg-temp').text(`${systemAnalysis.results.avg_temperature.toFixed(1)}°C`);
-    $('#avg-wind').text(`${systemAnalysis.results.avg_wind_speed.toFixed(1)} m/s`);
+    //$('#annual-ghi').text(`${systemAnalysis.results.annual_ghi.toFixed(0)} kWh/m²`);
+    //$('#avg-temp').text(`${systemAnalysis.results.avg_temperature.toFixed(1)}°C`);
+    //$('#avg-wind').text(`${systemAnalysis.results.avg_wind_speed.toFixed(1)} m/s`);
 
     // Calculate weather averages
     const monthlyGHI = systemAnalysis.weather_data.monthly_ghi || [];
