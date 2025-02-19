@@ -37,20 +37,25 @@ TEMPERATURE_MODEL_PARAMETERS = {
 
 # System type to temperature model mapping
 SYSTEM_TYPE_DEFAULTS = {
-    'ground': {
+    'ground-mounted': {
         'temp_model': 'sapm',
-        'sapm_type': 'open_rack',
+        'sapm_type': 'open_rack_glass_polymer',
         'pvsyst_type': 'freestanding'
     },
-    'roof': {
-        'temp_model': 'pvsyst',
-        'sapm_type': 'close_mount',
-        'pvsyst_type': 'integrated'
+    'roof-based': {
+        'temp_model': 'sapm',
+        'sapm_type': 'close_mount_glass_glass',
+        'pvsyst_type': 'insulated'
     },
     'floating': {
-        'temp_model': 'pvsyst',
-        'sapm_type': 'water_surface',
-        'pvsyst_type': 'water_surface'
+        'temp_model': 'sapm',
+        'sapm_type': 'open_rack_glass_polymer',
+        'pvsyst_type': 'freestanding'
+    },
+    'agrivoltaics': {
+        'temp_model': 'sapm',
+        'sapm_type': 'open_rack_glass_polymer',
+        'pvsyst_type': 'freestanding'
     }
 }
 
@@ -938,7 +943,7 @@ def calculate():
         tilt = float(data.get('tilt', 23))
         azimuth = float(data.get('azimuth', 180))
         gcr = float(data.get('gcr', 0.4))
-        system_type = data.get('system_type', 'ground-mounted')
+        system_type = data.get('system_type', 'ground-mounted')  # Changed from 'ground' to 'ground-mounted'
         
         # Extract financial parameters
         installed_cost = float(data.get('installed_cost', 5000))
