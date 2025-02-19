@@ -912,23 +912,57 @@ def calculate():
             price_escalation=price_escalation
         )
         
-        # Combine all results
-        results = {
+        # Create response with all metrics
+        response = {
             'success': True,
-            'system_output': system_output,
-            'financial_metrics': financial_metrics,
-            'cost_breakdown': {
-                'module_cost': module_cost * system_size * 1000,
-                'inverter_cost': inverter_cost * system_size * 1000,
-                'bos_cost': bos_cost * system_size * 1000,
-                'installation_cost': installation_cost * system_size * 1000,
-                'soft_cost': soft_cost * system_size * 1000,
-                'land_cost': land_cost,
-                'total_cost': installed_cost
-            }
+            'system_output': {
+                'annual_energy': system_output['annual_energy'],
+                'peak_dc_power': system_output['peak_dc_power'],
+                'peak_ac_power': system_output['peak_ac_power'],
+                'capacity_factor': system_output['capacity_factor'],
+                'performance_ratio': system_output['performance_ratio'],
+                'specific_yield': system_output['specific_yield'],
+                'module_area': system_output['module_area'],
+                'total_module_area': system_output['total_module_area'],
+                'total_modules': system_output['total_modules'],
+                'modules_per_string': system_output['modules_per_string'],
+                'strings_per_inverter': system_output['strings_per_inverter'],
+                'number_of_inverters': system_output['number_of_inverters'],
+                'dc_ac_ratio': system_output['dc_ac_ratio'],
+                'module_type': system_output['module_type'],
+                'inverter_type': system_output['inverter_type'],
+                'min_design_temp': system_output['min_design_temp'],
+                'max_design_temp': system_output['max_design_temp'],
+                'effective_irradiance': system_output['effective_irradiance'],
+                'cell_temperature': system_output['cell_temperature'],
+                'monthly_energy': system_output['monthly_energy'],
+                'daily_energy': system_output['daily_energy'],
+                'actual_system_size_kw': system_size
+            },
+            'financial_metrics': {
+                'lcoe': financial_metrics['lcoe'],
+                'npv': financial_metrics['net_present_value'],
+                'payback_period': financial_metrics['simple_payback'],
+                'annual_savings': financial_metrics['annual_savings'],
+                'total_savings': financial_metrics['total_savings'],
+                'annual_cashflow': financial_metrics['annual_cashflow'],
+                'cumulative_cashflow': financial_metrics['cumulative_cashflow'],
+                'cost_breakdown': cost_breakdown
+            },
+            'weather_data': {
+                'monthly_ghi': [],
+                'monthly_temperature': [],
+                'hourly_wind_speed': []
+            },
+            'annual_savings': financial_metrics['annual_savings'],
+            'lcoe': financial_metrics['lcoe'],
+            'co2_savings': financial_metrics['co2_savings'],
+            'simple_payback': financial_metrics['simple_payback'],
+            'city': '-',
+            'country': '-'
         }
-        
-        return jsonify(results)
+
+        return jsonify(response)
         
     except Exception as e:
         print(f"Error in calculate route: {str(e)}")
