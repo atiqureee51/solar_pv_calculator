@@ -904,17 +904,17 @@ def calculate():
         weather_data = {
             'monthly_ghi': [float(x) for x in system_output['monthly_ghi']],
             'monthly_temperature': [float(x) for x in system_output['monthly_temperature']],
-            'monthly_wind_speed': [float(x) for x in system_output['monthly_wind_speed']]
-}
+            'monthly_wind_speed': [float(x) for x in system_output['monthly_wind_speed']]}
         
+        # 'annual_ghi': float(system_output['monthly_ghi'].resample('Y').sum().iloc[0]),
+        #'avg_temperature': float(system_output['monthly_temperature'].resample('Y').mean().iloc[0]),
+        #'avg_wind_speed': float(system_output['monthly_wind_speed'].resample('Y').mean().iloc[0])
         # Add weather data to system_output
         system_output.update({
             'monthly_ghi': weather_data['monthly_ghi'],
             'monthly_temperature': weather_data['monthly_temperature'],
             'monthly_wind_speed': weather_data['monthly_wind_speed'],
-            'annual_ghi': float(system_output['monthly_ghi'].resample('Y').sum().iloc[0]),
-            'avg_temperature': float(system_output['monthly_temperature'].resample('Y').mean().iloc[0]),
-            'avg_wind_speed': float(system_output['monthly_wind_speed'].resample('Y').mean().iloc[0])
+
         
         })
 
