@@ -918,12 +918,7 @@ def calculate():
         response = {
             'success': True,
             'results': {
-                'peak_dc_power': system_output['peak_dc_power'],
-                'peak_ac_power': system_output['peak_ac_power'],
-                'capacity_factor': system_output['capacity_factor'],
-                'performance_ratio': system_output['performance_ratio'],
-                'annual_energy': system_output['annual_energy'],
-                'specific_yield': system_output['specific_yield'],
+                **system_output,  # Include all system output data
                 'module_cost': module_cost * installed_cost,
                 'inverter_cost': inverter_cost * installed_cost,
                 'bos_cost': bos_cost * installed_cost,
@@ -932,11 +927,6 @@ def calculate():
                 'lcoe': financial_metrics['lcoe'],
                 'npv': financial_metrics['npv'],
                 'payback_period': financial_metrics['payback_period'],
-                'monthly_energy': system_output['monthly_energy'],
-                'daily_profile': system_output['daily_energy'],
-                'monthly_ghi': weather_data['monthly_ghi'],
-                'monthly_temperature': weather_data['monthly_temperature'],
-                'monthly_wind_speed': weather_data['monthly_wind_speed'],
                 'cashflow': financial_metrics['cashflow']
             }
         }
