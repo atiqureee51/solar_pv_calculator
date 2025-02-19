@@ -1613,8 +1613,8 @@ function updateResults(systemAnalysis) {
 
         // Update cost breakdown pie chart
         if (systemAnalysis.financials.cost_breakdown) {
-            const ctx = document.getElementById('cost-breakdown-chart').getContext('2d');
-            let existingChart = Chart.getChart('cost-breakdown-chart');
+            const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+            let existingChart = Chart.getChart('costBreakdownChart');
             if (existingChart) {
                 existingChart.destroy();
             }

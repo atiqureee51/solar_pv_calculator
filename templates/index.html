@@ -814,7 +814,7 @@
                   <div class="card mb-4">
                     <div class="card-body">
                       <h5>Cost Breakdown</h5>
-                      <canvas id="cost-breakdown-chart"></canvas>
+                      <canvas id="costBreakdownChart"></canvas>
                     </div>
                   </div>
                 </div>
@@ -934,11 +934,7 @@
               </div>
             </div>
           </div>
-          <div class="row mt-4">
-            <div class="col-12">
-              <canvas id="costBreakdownChart"></canvas>
-            </div>
-          </div>
+
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" id="updateCosts">Update Total Cost</button>
@@ -999,9 +995,7 @@
       // Initialize existing functions
       initializeCalculator();
       initializeCharts();
-      
-      // Initialize the new house energy calculator
-      initHouseEnergyCalculator();
+      initializeCostBreakdownChart();
     });
   </script>
 </body>
