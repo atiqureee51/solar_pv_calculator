@@ -541,15 +541,15 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'performance_ratio': performance_ratio,
             'capacity_factor': capacity_factor,
             'specific_yield': specific_yield,
+            'module_area': float(module['Area']),
+            'total_module_area': float(module['Area'] * modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
+            'total_modules': int(modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'modules_per_string': max_modules_per_string,
             'strings_per_inverter': max_parallel_strings,
             'number_of_inverters': num_inverters_needed,
             'actual_system_size_kw': float(system_size_kw),
             'dc_ac_ratio': float(dc_ac_ratio),
-            'total_module_area': float(module['Area'] * modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
-            'module_area': float(module['Area']),
             'module_type': module_name,
-            'total_modules': int(modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'inverter_type': inverter_name,
             'system_size': system_size_kw,
             'inverter_power': inverter['Paco'],
@@ -559,8 +559,8 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'min_design_temp': float(min_db_temp_ashrae),
             'max_design_temp': float(max_db_temp_ashrae),
             'effective_irradiance': float(wdf['effective_irradiance'].mean()),
-            'monthly_ghi': [float(x) for x in weather['ghi'].resample('M').sum().tolist()],
-            'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],
+            'monthly_ghi': [float(x) for x in weather['ghi'].resample('M').mean().tolist()],  # Changed to monthly average
+            'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],  # Changed to monthly average
             'hourly_wind_speed': [float(x) for x in weather['wind_speed'].tolist()],
             'cell_temperature': float(wdf['cell_temperature'].mean())
         }
@@ -915,51 +915,30 @@ def calculate():
             price_escalation=price_escalation
         )
         
-        # Create response with all metrics
+        # Process weather data for charts
+        weather_data = {
+            'monthly_ghi': [float(x) for x in system_output['monthly_ghi']],  # Changed to monthly average
+            'monthly_temperature': [float(x) for x in system_output['monthly_temperature']],  # Changed to monthly average
+            'monthly_wind_speed': [float(x) for x in system_output['monthly_wind_speed']]  # Changed to monthly average
+        }
+
+        # Add weather data to system_output
+        system_output.update({
+            'monthly_ghi': weather_data['monthly_ghi'],
+            'monthly_temperature': weather_data['monthly_temperature'],
+            'monthly_wind_speed': weather_data['monthly_wind_speed']
+        })
+
+        # Final response structure
         response = {
             'success': True,
-            'system_output': {
-                'annual_energy': system_output['annual_energy'],
-                'peak_dc_power': system_output['peak_dc_power'],
-                'peak_ac_power': system_output['peak_ac_power'],
-                'capacity_factor': system_output['capacity_factor'],
-                'performance_ratio': system_output['performance_ratio'],
-                'specific_yield': system_output['specific_yield'],
-                'module_area': system_output['module_area'],
-                'total_module_area': system_output['total_module_area'],
-                'total_modules': system_output['total_modules'],
-                'modules_per_string': system_output['modules_per_string'],
-                'strings_per_inverter': system_output['strings_per_inverter'],
-                'number_of_inverters': system_output['number_of_inverters'],
-                'dc_ac_ratio': system_output['dc_ac_ratio'],
-                'module_type': system_output['module_type'],
-                'inverter_type': system_output['inverter_type'],
-                'min_design_temp': system_output['min_design_temp'],
-                'max_design_temp': system_output['max_design_temp'],
-                'effective_irradiance': system_output['effective_irradiance'],
-                'cell_temperature': system_output['cell_temperature'],
-                'monthly_energy': system_output['monthly_energy'],
-                'daily_energy': system_output['daily_energy']
-            },
-            'financial_metrics': {
-                'lcoe': financial_metrics['lcoe'],
-                'npv': financial_metrics['net_present_value'],
-                'payback_period': financial_metrics['simple_payback'],
-                'annual_savings': financial_metrics['annual_savings'],
-                'total_savings': financial_metrics['total_savings'],
-                'annual_cashflow': financial_metrics['annual_cashflow'],
-                'cumulative_cashflow': financial_metrics['cumulative_cashflow'],
-                'cost_breakdown': cost_breakdown
-            },
-            'weather_data': {
-                'monthly_ghi':  [float(x) for x in system_output['monthly_ghi']],
-                'monthly_temperature':  [float(x) for x in system_output['monthly_temperature']],
-                'hourly_wind_speed':  [float(x) for x in system_output['hourly_wind_speed']]
-            },
+            'system_output': system_output,
+            'financial_metrics': financial_metrics,
+            'weather_data': weather_data,  # Use the processed weather_data
             'annual_savings': financial_metrics['annual_savings'],
             'lcoe': financial_metrics['lcoe'],
+            'simple_payback': financial_metrics['payback_period'],
             'co2_savings': financial_metrics['co2_savings'],
-            'simple_payback': financial_metrics['simple_payback'],
             'city': '-',
             'country': '-'
         }

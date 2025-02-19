@@ -1550,6 +1550,7 @@ function updateResults(systemAnalysis) {
 
     // 2. Weather Charts
     if (systemAnalysis.weather_data) {
+        // GHI Chart
         if (systemAnalysis.weather_data.monthly_ghi) {
             updateChart(
                 'ghi-chart',
@@ -1561,6 +1562,7 @@ function updateResults(systemAnalysis) {
             );
         }
 
+        // Temperature Chart
         if (systemAnalysis.weather_data.monthly_temperature) {
             updateChart(
                 'temperature-chart',
@@ -1572,6 +1574,7 @@ function updateResults(systemAnalysis) {
             );
         }
 
+        // Wind Speed Chart
         if (systemAnalysis.weather_data.monthly_wind_speed) {
             updateChart(
                 'wind-chart',
@@ -1582,6 +1585,15 @@ function updateResults(systemAnalysis) {
                 'Wind Speed (m/s)'
             );
         }
+
+        // Update weather summary values
+        const annualGHI = systemAnalysis.weather_data.monthly_ghi.reduce((a, b) => a + b, 0);
+        const avgTemp = systemAnalysis.weather_data.monthly_temperature.reduce((a, b) => a + b, 0) / 12;
+        const avgWind = systemAnalysis.weather_data.monthly_wind_speed.reduce((a, b) => a + b, 0) / 12;
+
+        $('#annual-ghi').text(`${annualGHI.toFixed(0)} kWh/m²`);
+        $('#avg-temp').text(`${avgTemp.toFixed(1)}°C`);
+        $('#avg-wind').text(`${avgWind.toFixed(1)} m/s`);
     }
 
     // 3. Financial Charts
@@ -1692,61 +1704,6 @@ function updateResults(systemAnalysis) {
             }
         }
     }
-}
-
-
-
-function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) {
-        console.error(`Canvas with id ${canvasId} not found`);
-        return;
-    }
-
-    // Destroy existing chart if it exists
-    let existingChart = Chart.getChart(canvasId);
-    if (existingChart) {
-        existingChart.destroy();
-    }
-
-    // Create new chart
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: title,
-                data: data,
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: xLabel
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: yLabel
-                    }
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                }
-            }
-        }
-    });
 }
 
 // Utility
