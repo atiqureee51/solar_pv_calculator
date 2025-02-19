@@ -534,8 +534,6 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             arrays=[array],
             inverter_parameters=inverter,
             losses_parameters={'soiling': 2, 'mismatch': 2, 'wiring': 2, 'shading': 0},
-            racking_model='open_rack',  # Add this line
-            module_type='glass_polymer'  # Add this line
         )
         
         mc = modelchain.ModelChain(system_obj, location_obj, losses_model='pvwatts')
