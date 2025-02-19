@@ -364,40 +364,29 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         print("Module calculations completed")
 
         # Calculate number of modules based on desired system size
-        total_power_needed = max(system_size_kw * 1000, 1)  # Convert kW to W, minimum 1W to prevent division by zero
-        total_modules_needed = math.ceil(total_power_needed / single_module_power) if single_module_power > 0 else 1
+        system_size_w = max(system_size_kw * 1000, 1)  # Minimum 1W
+        modules_needed = math.ceil(system_size_w / max(float(module.get('STC', 0)), 0.1))  # Minimum 0.1W
         
-        # Calculate optimal string configuration with safety checks
-        max_modules_per_string = min(
-            max(1, math.floor(inverter['Vdcmax'] / max(module['Vmpo'], 1))),
-            max(1, math.floor(inverter['Vdcmax'] / max(module['Voco'], 1)))
-        )
-        min_modules_per_string = max(1, math.ceil(inverter['Mppt_low'] / max(module['Vmpo'], 1)))
+        # Calculate string sizing
+        vmp = max(float(module.get('V_mp_ref', 0)), 0.1)  # Minimum 0.1V
+        voc = max(float(module.get('V_oc_ref', 0)), 0.1)  # Minimum 0.1V
         
-        # Choose optimal number of modules per string with safety checks
-        modules_per_string = min(max_modules_per_string, 
-                               max(min_modules_per_string, 
-                                   math.ceil(math.sqrt(max(total_modules_needed, 1)))))
-        
-        # Calculate maximum strings per inverter with safety checks
-        max_strings_per_inverter = max(1, min(
-            math.floor(inverter['Idcmax'] / max(module['Impo'], 0.1)),
-            math.floor(inverter['Pdco'] / max(modules_per_string * single_module_power, 1))
+        max_modules_per_string = max(1, min(
+            math.floor(inverter.get('Vdcmax', 600) / vmp),
+            math.floor(inverter.get('Vdcmax', 600) / voc)
         ))
         
-        # Calculate total system configuration
-        modules_per_inverter = modules_per_string * max_strings_per_inverter
-        total_modules_needed = math.ceil(total_power_needed / max(single_module_power, 1))
-        actual_strings_needed = math.ceil(total_modules_needed / max(modules_per_string, 1))
+        # Calculate parallel strings
+        imp = max(float(module.get('I_mp_ref', 0)), 0.1)  # Minimum 0.1A
+        max_parallel_strings = max(1, math.floor(inverter.get('Idcmax', 10) / imp))
         
-        # Calculate actual system size and DC/AC ratio with safety checks
-        actual_system_size_w = total_modules_needed * single_module_power
-        actual_system_size_kw = actual_system_size_w / 1000
-        num_inverters_needed = math.ceil(actual_strings_needed / max(max_strings_per_inverter, 1))
+        # Calculate system configuration
+        modules_per_inverter = max_modules_per_string * max_parallel_strings
+        num_inverters_needed = max(1, math.ceil(modules_needed / modules_per_inverter))
         
-        # Prevent division by zero in DC/AC ratio calculation
-        inverter_ac_power = max(inverter['Paco'], 0.1)  # Minimum 0.1W to prevent division by zero
-        dc_ac_ratio = actual_system_size_w / (inverter_ac_power * num_inverters_needed)
+        # Calculate actual system size and DC/AC ratio
+        inverter_ac_power = max(float(inverter.get('Paco', 0)), 0.1)  # Minimum 0.1W
+        dc_ac_ratio = (modules_needed * max(float(module.get('STC', 0)), 0.1)) / (num_inverters_needed * inverter_ac_power)
         
         location_obj = location.Location(latitude, longitude, 'Etc/GMT', altitude=0)
         
@@ -469,8 +458,8 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             mount=mount,
             module_parameters=module,
             temperature_model_parameters=temperature_model_parameters,
-            modules_per_string=modules_per_string,
-            strings=max_strings_per_inverter
+            modules_per_string=max_modules_per_string,
+            strings=max_parallel_strings
         )
         system_obj = pvsystem.PVSystem(
             arrays=[array],
@@ -500,20 +489,20 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         monthly_energy = [float(x) for x in ac_annual_series.resample('M').sum().tolist()]
 
         # Calculate annual energy and power values
-        annual_energy_mwh = (ac_annual_series.sum()*math.ceil(actual_strings_needed / max_strings_per_inverter))/1e6
+        annual_energy_mwh = (ac_annual_series.sum()*math.ceil(modules_needed / modules_per_inverter))/1e6
         peak_ac = ac_annual_series.max()
         peak_dc = dc_annual_series.max()
         
         annual_energy_kwh = float(annual_energy_mwh*1000)
-        peak_ac_kW = float((peak_ac/1000)*math.ceil(actual_strings_needed / max_strings_per_inverter))
-        peak_dc_kW = float((peak_dc/1000)*math.ceil(actual_strings_needed / max_strings_per_inverter))
+        peak_ac_kW = float((peak_ac/1000)*math.ceil(modules_needed / modules_per_inverter))
+        peak_dc_kW = float((peak_dc/1000)*math.ceil(modules_needed / modules_per_inverter))
 
         # Calculate performance metrics as before...
         poa_wh_m2=(env_data['poa_global'])
         poa_sum=poa_wh_m2.resample('Y').sum().values[0]
         if poa_sum > 0:
             Reference_Yield = poa_sum/1000
-            Final_Yield = (annual_energy_kwh/(single_module_power*modules_per_string*max_strings_per_inverter*math.ceil(actual_strings_needed / max_strings_per_inverter)))*1000
+            Final_Yield = (annual_energy_kwh/(max(float(module.get('STC', 0)), 0.1)*modules_per_inverter*math.ceil(modules_needed / modules_per_inverter)))*1000
             performance_ratio = Final_Yield/Reference_Yield
         else:
             Reference_Yield = 0
@@ -522,7 +511,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             
         # Calculate capacity factor with zero check
         total_possible_hours = 8760  # hours in a year
-        rated_power = single_module_power*modules_per_string*max_strings_per_inverter*math.ceil(actual_strings_needed / max_strings_per_inverter)
+        rated_power = max(float(module.get('STC', 0)), 0.1)*modules_per_inverter*math.ceil(modules_needed / modules_per_inverter)
         if rated_power > 0:
             capacity_factor = ((annual_energy_kwh)/rated_power*1000/total_possible_hours)
         else:
@@ -688,18 +677,18 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'performance_ratio': performance_ratio,
             'capacity_factor': capacity_factor,
             'specific_yield': specific_yield,
-            'modules_per_string': int(modules_per_string),
-            'strings_per_inverter': int(max_strings_per_inverter),
-            'number_of_inverters': int(math.ceil(actual_strings_needed / max_strings_per_inverter)),
+            'modules_per_string': max_modules_per_string,
+            'strings_per_inverter': max_parallel_strings,
+            'number_of_inverters': num_inverters_needed,
             'dc_ac_ratio': float(dc_ac_ratio),
-            'total_module_area': float(module['Area'] * modules_per_string * max_strings_per_inverter * math.ceil(actual_strings_needed / max_strings_per_inverter)),
+            'total_module_area': float(module['Area'] * modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'module_area': float(module['Area']),
             'module_type': module_name,
-            'total_modules': int(modules_per_string * max_strings_per_inverter * math.ceil(actual_strings_needed / max_strings_per_inverter)),
+            'total_modules': int(modules_per_inverter * math.ceil(modules_needed / modules_per_inverter)),
             'inverter_type': inverter_name,
             'system_size': system_size_kw,
             'inverter_power': inverter['Paco'],
-            'module_power': single_module_power,
+            'module_power': max(float(module.get('STC', 0)), 0.1),
             'daily_energy': daily_energy,
             'monthly_energy': monthly_energy,
             'lcoe': float(lcoe),
@@ -813,8 +802,8 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
     desired_power_w = system_size_kw * 1000
     
     # Calculate optimal number of inverters based on DC power rating
-    min_inverters_dc = math.ceil(desired_power_w / max(max_input_power, 0.1))  # Prevent division by zero
-    min_inverters_ac = math.ceil(desired_power_w / max(inverter_power_w * 1.3, 0.1))  # Using max DC/AC ratio of 1.3
+    min_inverters_dc = math.ceil(desired_power_w / max_input_power)
+    min_inverters_ac = math.ceil(desired_power_w / (inverter_power_w * 1.3))  # Using max DC/AC ratio of 1.3
     min_inverters = max(min_inverters_dc, min_inverters_ac)
     
     # Calculate string sizing

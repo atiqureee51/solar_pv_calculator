@@ -50,7 +50,6 @@ const DEFAULT_VALUES = {
         azimuth: 180
     },
     world: {
-
         lat: 37.0902,
         lon: -95.7129,
         systemSize: 5,
@@ -121,74 +120,162 @@ const TEMPERATURE_MODEL_PARAMETERS = {
     }
 };
 
+// Initialize calculator
+function initializeCalculator() {
+    try {
+        // Initialize form elements
+        initializeForm();
+        initializeCostComponents();
+        initializeLocation();
+        loadModulesAndInverters();
+        
+        // Initialize map before setting up event listeners
+        initializeMap();
+        
+        // Setup remaining components
+        setupEventListeners();
+        setupQuickAccessControls();
+        setupQuickControls();
+        
+        // Setup initial values
+        updateSystemType();
+        updateSizingMethod();
+        updateCostBreakdown();
+        
+        // Load API configuration
+        loadAPIConfig();
+    } catch (error) {
+        console.error('Error initializing calculator:', error);
+    }
+}
+
 // Map initialization
 function initializeMap() {
-    // Get initial region
-    const initialRegion = $('#region').val();
-    const defaults = getDefaultsForRegion(initialRegion);
-    
-    // Initialize map with correct starting position
-    map = L.map('map').setView([defaults.lat, defaults.lon], defaults.zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: ' OpenStreetMap contributors',
-        maxZoom: 19,
-        crossOrigin: true,
-        useCache: false
-    }).addTo(map);
-
-    // Initialize marker with dragging enabled
-    marker = L.marker([defaults.lat, defaults.lon], {
-        draggable: true
-    }).addTo(map);
-
-    // Handle marker drag events
-    marker.on('dragend', function(e) {
-        const position = marker.getLatLng();
-        updateCoordinates(position.lat, position.lng);
-    });
-
-    // Handle map click events
-    map.on('click', function(e) {
-        const position = e.latlng;
-        marker.setLatLng(position);
-        updateCoordinates(position.lat, position.lng);
-    });
-
-    // Initialize the FeatureGroup to store editable layers
-    drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    drawControl = new L.Control.Draw({
-        draw: {
-            polygon: true,
-            rectangle: true,
-            circle: false,
-            circlemarker: false,
-            marker: false,
-            polyline: false
-        },
-        edit: {
-            featureGroup: drawnItems,
-            remove: true
-        }
-    });
-    map.addControl(drawControl);
-
-    // Handle draw events
-    map.on(L.Draw.Event.CREATED, function(e) {
-        drawnItems.clearLayers();
-        var layer = e.layer;
-        drawnItems.addLayer(layer);
+    try {
+        // Get initial region
+        const initialRegion = $('#region').val();
+        const defaults = getDefaultsForRegion(initialRegion);
         
-        var type = e.layerType;
-        if (type === 'rectangle' || type === 'polygon') {
-            var area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
-            var areaKm2 = (area / 1000000).toFixed(4); // Convert to km² with 4 decimal places
-            $('#quick-area-size').val(areaKm2);
-            $('#area').val((area).toFixed(2)); // Set the area in m²
-            updateSystemSizeFromArea(area);
+        // Initialize map with correct starting position
+        if (!map) {
+            map = L.map('map').setView([defaults.lat, defaults.lon], defaults.zoom);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: ' OpenStreetMap contributors',
+                maxZoom: 19,
+                crossOrigin: true,
+                useCache: false
+            }).addTo(map);
+
+            // Initialize marker with dragging enabled
+            marker = L.marker([defaults.lat, defaults.lon], {
+                draggable: true
+            }).addTo(map);
+
+            // Handle marker drag events
+            marker.on('dragend', function(e) {
+                const position = marker.getLatLng();
+                updateCoordinates(position.lat, position.lng);
+            });
+
+            // Handle map click events
+            map.on('click', function(e) {
+                const position = e.latlng;
+                marker.setLatLng(position);
+                updateCoordinates(position.lat, position.lng);
+            });
+
+            // Initialize the FeatureGroup to store editable layers
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            // Initialize draw control
+            drawControl = new L.Control.Draw({
+                draw: {
+                    polygon: true,
+                    rectangle: true,
+                    circle: false,
+                    circlemarker: false,
+                    marker: false,
+                    polyline: false
+                },
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: true
+                }
+            });
+
+            // Handle draw events
+            map.on(L.Draw.Event.CREATED, handleDrawCreated);
+            map.on(L.Draw.Event.EDITED, handleDrawEdited);
+            map.on(L.Draw.Event.DELETED, handleDrawDeleted);
         }
-    });
+    } catch (error) {
+        console.error('Error initializing map:', error);
+    }
+}
+
+function updateSizingMethod() {
+    try {
+        const method = document.getElementById('sizing-method').value;
+        const systemSizeInputs = document.getElementById('system-size-inputs');
+        const areaInputs = document.getElementById('area-inputs');
+        const areaInfo = document.getElementById('area-info');
+        const mapContainer = document.getElementById('map-container');
+        
+        if (method === 'area') {
+            if (systemSizeInputs) systemSizeInputs.style.display = 'none';
+            if (areaInputs) areaInputs.style.display = 'block';
+            if (areaInfo) areaInfo.style.display = 'block';
+            if (mapContainer) mapContainer.style.display = 'block';
+            enableDrawControl();
+        } else {
+            if (systemSizeInputs) systemSizeInputs.style.display = 'block';
+            if (areaInputs) areaInputs.style.display = 'none';
+            if (areaInfo) areaInfo.style.display = 'none';
+            if (mapContainer) mapContainer.style.display = 'none';
+            disableDrawControl();
+        }
+    } catch (error) {
+        console.error('Error updating sizing method:', error);
+    }
+}
+
+function enableDrawControl() {
+    try {
+        if (map && drawControl) {
+            map.addControl(drawControl);
+        }
+    } catch (error) {
+        console.error('Error enabling draw control:', error);
+    }
+}
+
+function disableDrawControl() {
+    try {
+        if (map && drawControl) {
+            map.removeControl(drawControl);
+        }
+        if (drawnItems) {
+            drawnItems.clearLayers();
+        }
+    } catch (error) {
+        console.error('Error disabling draw control:', error);
+    }
+}
+
+function updateMapLocation() {
+    try {
+        const lat = parseFloat(document.getElementById('latitude').value);
+        const lng = parseFloat(document.getElementById('longitude').value);
+        if (!isNaN(lat) && !isNaN(lng) && map) {
+            map.setView([lat, lng], map.getZoom());
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating map location:', error);
+    }
 }
 
 // Get default values based on region
@@ -200,7 +287,6 @@ function getDefaultsForRegion(region) {
             zoom: 12
         },
         'usa': {
-
             lat: 30.2241,
             lon: -92.0198,
             zoom: 12
@@ -420,25 +506,90 @@ function createCashflowChart(canvas) {
     });
 }
 
-// Initialize calculator
-function initializeCalculator() {
-    // Initialize form elements
-    initializeForm();
-    initializeCostComponents();
-    initializeLocation();
-    loadModulesAndInverters();
-    setupEventListeners();
-    setupQuickAccessControls();
-    setupQuickControls();
-    
-    // Setup initial values
-    updateSystemType();
-    updateSizingMethod();
-    updateCostBreakdown();
-    
-    // Load API configuration
-    loadAPIConfig();
-}
+// Initialize everything
+$(document).ready(function() {
+    try {
+        // Get initial region before any initialization
+        const initialRegion = $('#region').val();
+        const defaults = getDefaultsForRegion(initialRegion);
+        
+        // Set initial coordinates
+        $('#latitude').val(defaults.lat.toFixed(6));
+        $('#longitude').val(defaults.lon.toFixed(6));
+        
+        // Update help text
+        $('#latitude').next('.form-text').text(`${initialRegion} default: ${defaults.lat}° N`);
+        $('#longitude').next('.form-text').text(`${initialRegion} default: ${defaults.lon}° E`);
+        
+        // Make panel fields read-only
+        $('#region, #system-size, #currency').prop('readonly', true);
+        
+        // Initialize components with correct defaults
+        initializeCalculator();
+        //initializeCollapse();
+        loadModulesAndInverters();
+
+        $('#region').change(function() {
+            const region = $(this).val();
+            const defaults = getDefaultsForRegion(region);
+            
+            // Update map and marker
+            if (map) {
+                map.setView([defaults.lat, defaults.lon], defaults.zoom);
+                marker.setLatLng([defaults.lat, defaults.lon]);
+            }
+            
+            // Update form values
+            $('#latitude').val(defaults.lat.toFixed(6));
+            $('#longitude').val(defaults.lon.toFixed(6));
+        });
+        
+        $('#currency').change(function() {
+            handleCurrencyChange($(this).val());
+        });
+        
+        // Initialize sizing method
+        $('#sizing-method').change(handleSizingMethodChange);
+        handleSizingMethodChange();
+        // Handle system size input
+        $('#system-size').on('input', function() {
+                if ($('#sizing-method').val() === 'system-size') {
+                    const systemSize = parseFloat($(this).val());
+                    if (!isNaN(systemSize)) {
+                        const moduleArea = 2.0;  // m²
+                        const gcr = parseFloat($('#gcr').val()) || 0.4;
+                        const area = (systemSize * 1000 / 400) * moduleArea / gcr;
+                        $('#area').val(area.toFixed(2));
+                    }
+                }
+        });
+        // Trigger initial handlers
+        handleRegionChange($('#region').val());
+        handleCurrencyChange($('#currency').val());
+
+        // Show initial status
+        $('#status-message')
+            .removeClass('d-none alert-danger')
+            .addClass('alert-info')
+            .text('Ready to calculate. Fill in the details and click Calculate.');
+            
+        // Store initial currency values
+        const rate = 110; // BDT to USD
+        $('.cost-component').each(function() {
+            const bdtValue = parseFloat($(this).val());
+            $(this).data('base-value', bdtValue / rate);
+        });
+        
+        ['#installed_cost', '#maintenance_cost', '#electricity_rate'].forEach(field => {
+            const bdtValue = parseFloat($(field).val());
+            $(this).data('base-value', bdtValue / rate);
+        });
+        
+    } catch (error) {
+        console.error('Initialization error:', error);
+        showError('Failed to initialize the application. Please refresh the page.');
+    }
+});
 
 // Event listeners
 function setupEventListeners() {
@@ -473,12 +624,14 @@ function handleSizingMethodChange() {
         $('#map-container').hide();
         $('#system-size').prop('readonly', false); // Enable manual system size input
         $('#area').prop('readonly', true);
+        disableDrawControl();
     } else {
         $('#system-size-inputs').hide();
         $('#area-inputs').show();
         $('#map-container').show();
         $('#system-size').prop('readonly', true); // Disable system size input in area mode
         $('#area').prop('readonly', false);
+        enableDrawControl();
         // If we already have an area drawn, update the calculations
         const areaValue = $('#area').val();
         if (areaValue) {
@@ -502,6 +655,21 @@ $(document).ready(function() {
     // Initialize the view
     handleSizingMethodChange();
 });
+
+function disableDrawControl() {
+    if (map && drawControl) {
+        map.removeControl(drawControl);
+    }
+    if (drawnItems) {
+        drawnItems.clearLayers();
+    }
+}
+
+function enableDrawControl() {
+    if (map && drawControl) {
+        map.addControl(drawControl);
+    }
+}
 
 // Load API config when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
@@ -1007,27 +1175,6 @@ function calculatePolygonArea(polygon) {
 function calculateSystemSize(area) {
     const powerDensity = 200; // W/m²
     return (area * powerDensity) / 1000;
-}
-
-function enableDrawControl() {
-    map.addControl(drawControl);
-}
-
-function disableDrawControl() {
-    map.removeControl(drawControl);
-    if (currentPolygon) {
-        drawnItems.removeLayer(currentPolygon);
-        currentPolygon = null;
-    }
-    document.getElementById('area').value = '';
-}
-
-function updateMapLocation() {
-    const lat = parseFloat(document.getElementById('latitude').value);
-    const lng = parseFloat(document.getElementById('longitude').value);
-    if (!isNaN(lat) && !isNaN(lng)) {
-        map.setView([lat, lng], 13);
-    }
 }
 
 // Temperature Model
@@ -1683,12 +1830,14 @@ function handleSizingMethodChange() {
         $('#map-container').hide();
         $('#system-size').prop('readonly', false); // Enable manual system size input
         $('#area').prop('readonly', true);
+        disableDrawControl();
     } else {
         $('#system-size-inputs').hide();
         $('#area-inputs').show();
         $('#map-container').show();
         $('#system-size').prop('readonly', true); // Disable system size input in area mode
         $('#area').prop('readonly', false);
+        enableDrawControl();
         // If we already have an area drawn, update the calculations
         const areaValue = $('#area').val();
         if (areaValue) {
@@ -1940,6 +2089,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 })
 
+
 // Handle region change
 function handleRegionChange(region) {
     const defaults = getDefaultsForRegion(region);
@@ -2044,7 +2194,3 @@ function calculateTotalEnergy() {
     const recommendedSize = (totalKwh / 4) * 1.2;
     document.getElementById('recommended-system-size').textContent = recommendedSize.toFixed(2) + ' kW';
 }
-
-$(document).ready(function() {
-    initializeCalculator();
-});
