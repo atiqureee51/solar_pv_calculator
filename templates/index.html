@@ -305,7 +305,7 @@
             </div>
           </div>
 
-          <!-- Standards Reference Section -->
+                  <!-- Standards Reference Section -->
           <div class="card mb-3">
             <div class="card-header" data-bs-toggle="collapse" data-bs-target="#standardsSection" role="button">
               <h5 class="mb-0">Standards Reference</h5>
@@ -319,6 +319,8 @@
                     <li><strong>NEC 690.8:</strong> Circuit sizing and current</li>
                     <li><strong>NEC 690.9:</strong> Overcurrent protection</li>
                     <li><strong>NEC 705.12:</strong> Point of connection</li>
+                    <li><strong>NEC 690.31:</strong> PV wire requirements</li>
+                    <li><strong>NEC 690.41:</strong> System grounding</li>
                   </ul>
                   <h6 class="fw-bold mt-3">IEC Standards</h6>
                   <ul class="list-unstyled small">
@@ -326,6 +328,8 @@
                     <li><strong>IEC 61730:</strong> Module safety qualification</li>
                     <li><strong>IEC 62446:</strong> Grid connected systems</li>
                     <li><strong>IEC 61683:</strong> Power conditioners</li>
+                    <li><strong>IEC 61724:</strong> Performance monitoring</li>
+                    <li><strong>IEC 62109:</strong> Inverter safety</li>
                   </ul>
                   <h6 class="fw-bold mt-3">Quick Design Rules</h6>
                   <ul class="list-unstyled small">
@@ -333,11 +337,124 @@
                     <li><strong>String Sizing:</strong> Stay within MPPT window</li>
                     <li><strong>Temperature:</strong> -10°C to 75°C design range</li>
                     <li><strong>Voltage Drop:</strong> Max 2% DC, 1.5% AC</li>
+                    <li><strong>Ground Coverage Ratio:</strong> 0.4 to 0.7</li>
+                    <li><strong>Tilt Angle:</strong> Typically latitude ±15°</li>
+                  </ul>
+                  <h6 class="fw-bold mt-3">Safety Standards</h6>
+                  <ul class="list-unstyled small">
+                    <li><strong>UL 1741:</strong> Inverter certification</li>
+                    <li><strong>UL 1703:</strong> PV module safety</li>
+                    <li><strong>IEEE 1547:</strong> Grid interconnection</li>
                   </ul>
                 </div>
               </div>
             </div>
           </div>
+
+
+
+          <!-- House Energy Calculator Section -->
+          <div class="card mb-3">
+            <div class="card-header" data-bs-toggle="collapse" data-bs-target="#houseEnergySection" role="button">
+              <h5 class="mb-0">House Energy Calculator</h5>
+            </div>
+            <div id="houseEnergySection" class="collapse">
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label">Common Appliances</label>
+                  <div class="appliance-list">
+                    <!-- Air Conditioning -->
+                    <div class="appliance-item mb-2">
+                      <div class="form-check d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" value="" id="ac-check">
+                        <label class="form-check-label ms-2" for="ac-check">
+                          Air Conditioning
+                        </label>
+                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="ac-count" disabled>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                        </select>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
+                               placeholder="Hours/day" id="ac-hours" disabled>
+                      </div>
+                    </div>
+                    <!-- Refrigerator -->
+                    <div class="appliance-item mb-2">
+                      <div class="form-check d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" value="" id="fridge-check">
+                        <label class="form-check-label ms-2" for="fridge-check">
+                          Refrigerator
+                        </label>
+                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="fridge-count" disabled>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                        </select>
+                        <span class="ms-2 small text-muted">24h/day</span>
+                      </div>
+                    </div>
+                    <!-- Lighting -->
+                    <div class="appliance-item mb-2">
+                      <div class="form-check d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" value="" id="light-check">
+                        <label class="form-check-label ms-2" for="light-check">
+                          LED Lighting
+                        </label>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 80px;" 
+                               placeholder="# Bulbs" id="light-count" disabled>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
+                               placeholder="Hours/day" id="light-hours" disabled>
+                      </div>
+                    </div>
+                    <!-- TV -->
+                    <div class="appliance-item mb-2">
+                      <div class="form-check d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" value="" id="tv-check">
+                        <label class="form-check-label ms-2" for="tv-check">
+                          Television
+                        </label>
+                        <select class="form-select form-select-sm ms-2" style="width: 80px;" id="tv-count" disabled>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                        </select>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
+                               placeholder="Hours/day" id="tv-hours" disabled>
+                      </div>
+                    </div>
+                    <!-- Custom Appliance -->
+                    <div class="appliance-item mb-2">
+                      <div class="form-check d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" value="" id="custom-check">
+                        <label class="form-check-label ms-2" for="custom-check">
+                          Custom Appliance
+                        </label>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
+                               placeholder="Watts" id="custom-watts" disabled>
+                        <input type="number" class="form-control form-control-sm ms-2" style="width: 100px;" 
+                               placeholder="Hours/day" id="custom-hours" disabled>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="total-energy-section mt-3">
+                  <h6 class="fw-bold">Daily Energy Consumption</h6>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span>Total kWh/day:</span>
+                    <span id="total-daily-kwh" class="fw-bold">0.00</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span>Recommended System Size:</span>
+                    <span id="recommended-system-size" class="fw-bold">0.00 kW</span>
+                  </div>
+                  <button class="btn btn-primary btn-sm mt-2" id="apply-recommended-size">
+                    Apply Recommended Size
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
 
 
         </form>
@@ -871,5 +988,15 @@
   </div>
 </div>
 
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize existing functions
+    initializeCalculator();
+    initializeCharts();
+    
+    // Initialize the new house energy calculator
+    initHouseEnergyCalculator();
+  });
+</script>
 </body>
 </html>

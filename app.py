@@ -1167,6 +1167,23 @@ def get_weather_data_route():
 def get_api_config():
     return jsonify({'success':True,'api_key':NREL_API_KEY,'email':EMAIL})
 
+
+
+@app.route('/calculate_house_energy', methods=['POST'])
+def calculate_house_energy():
+    data = request.get_json()
+    daily_kwh = data.get('daily_kwh', 0)
+    peak_sun_hours = data.get('peak_sun_hours', 4)  # Default 4 hours
+    system_losses = 0.2  # 20% losses
+
+    recommended_size = (daily_kwh / peak_sun_hours) * (1 + system_losses)
+    
+    return jsonify({
+        'recommended_size_kw': round(recommended_size, 2),
+        'daily_energy_kwh': round(daily_kwh, 2),
+        'annual_energy_kwh': round(daily_kwh * 365, 2)
+    })
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
     app.run(debug=True, host='0.0.0.0', port=port)

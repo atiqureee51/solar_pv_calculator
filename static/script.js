@@ -2053,3 +2053,87 @@ function handleRegionChange(region) {
         $('#currency').val('USD').trigger('change');
     }
 }
+
+
+// House Energy Calculator
+const APPLIANCE_POWER = {
+    ac: 1500,        // Watts for typical AC
+    fridge: 150,     // Watts for typical refrigerator
+    light: 10,       // Watts per LED bulb
+    tv: 100,         // Watts for typical TV
+};
+
+function initHouseEnergyCalculator() {
+    // Enable/disable controls based on checkbox state
+    document.querySelectorAll('.appliance-item input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const controls = this.closest('.appliance-item').querySelectorAll('select, input[type="number"]');
+            controls.forEach(control => {
+                control.disabled = !this.checked;
+            });
+            calculateTotalEnergy();
+        });
+    });
+
+    // Calculate on any input change
+    document.querySelectorAll('.appliance-item select, .appliance-item input[type="number"]').forEach(input => {
+        input.addEventListener('change', calculateTotalEnergy);
+        input.addEventListener('input', calculateTotalEnergy);
+    });
+
+    // Apply recommended size button
+    document.getElementById('apply-recommended-size').addEventListener('click', function() {
+        const recommendedSize = parseFloat(document.getElementById('recommended-system-size').textContent);
+        if (recommendedSize > 0) {
+            document.getElementById('system-size').value = recommendedSize;
+            // Trigger any existing system size change handlers
+            document.getElementById('system-size').dispatchEvent(new Event('change'));
+        }
+    });
+}
+
+function calculateTotalEnergy() {
+    let totalWattHours = 0;
+
+    // AC calculation
+    if (document.getElementById('ac-check').checked) {
+        const count = parseInt(document.getElementById('ac-count').value) || 0;
+        const hours = parseFloat(document.getElementById('ac-hours').value) || 0;
+        totalWattHours += APPLIANCE_POWER.ac * count * hours;
+    }
+
+    // Refrigerator calculation (24 hours fixed)
+    if (document.getElementById('fridge-check').checked) {
+        const count = parseInt(document.getElementById('fridge-count').value) || 0;
+        totalWattHours += APPLIANCE_POWER.fridge * count * 24;
+    }
+
+    // LED Lighting calculation
+    if (document.getElementById('light-check').checked) {
+        const count = parseInt(document.getElementById('light-count').value) || 0;
+        const hours = parseFloat(document.getElementById('light-hours').value) || 0;
+        totalWattHours += APPLIANCE_POWER.light * count * hours;
+    }
+
+    // TV calculation
+    if (document.getElementById('tv-check').checked) {
+        const count = parseInt(document.getElementById('tv-count').value) || 0;
+        const hours = parseFloat(document.getElementById('tv-hours').value) || 0;
+        totalWattHours += APPLIANCE_POWER.tv * count * hours;
+    }
+
+    // Custom appliance calculation
+    if (document.getElementById('custom-check').checked) {
+        const watts = parseFloat(document.getElementById('custom-watts').value) || 0;
+        const hours = parseFloat(document.getElementById('custom-hours').value) || 0;
+        totalWattHours += watts * hours;
+    }
+
+    // Convert to kWh
+    const totalKwh = totalWattHours / 1000;
+    document.getElementById('total-daily-kwh').textContent = totalKwh.toFixed(2);
+
+    // Calculate recommended system size (assuming 4 peak sun hours and 20% system losses)
+    const recommendedSize = (totalKwh / 4) * 1.2;
+    document.getElementById('recommended-system-size').textContent = recommendedSize.toFixed(2) + ' kW';
+}
