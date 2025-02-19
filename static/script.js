@@ -1995,17 +1995,26 @@ function updateChart(canvasId, labels, data, title, xLabel, yLabel) {
         return;
     }
 
-    // Update chart data and options
+    // Update chart data
     chart.data.labels = labels;
-    chart.data.datasets[0].data = data;
     
-    // Update axis labels if provided
-    if (xLabel) {
-        chart.options.scales.x.title.text = xLabel;
+    // Handle pie chart differently
+    if (chart.config.type === 'pie') {
+        chart.data.datasets[0].data = data;
+        // Keep the existing backgroundColor array for pie chart
+    } else {
+        // For line and bar charts
+        chart.data.datasets[0].data = data;
+        // Update axis labels if provided
+        if (xLabel) {
+            chart.options.scales.x.title.text = xLabel;
+        }
+        if (yLabel) {
+            chart.options.scales.y.title.text = yLabel;
+        }
     }
-    if (yLabel) {
-        chart.options.scales.y.title.text = yLabel;
-    }
+
+    // Update title if provided
     if (title) {
         chart.options.plugins.title.text = title;
     }
