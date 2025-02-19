@@ -582,88 +582,33 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         specific_yield = float(annual_energy_kwh / system_size_kw if system_size_kw > 0 else 0)
 
         # Calculate financial metrics
-        base_module_cost = 0.35  # $/W for modules
-        base_inverter_cost = 0.10  # $/W for inverters
-        base_bos_cost = {
-            'racking': 0.10,  # $/W
-            'wiring': 0.15,   # $/W
-            'disconnect': 0.05 # $/W
-        }
-        base_installation_cost = {
-            'labor': 0.20,    # $/W
-            'overhead': 0.10,  # $/W
-            'profit': 0.10    # $/W
-        }
-        base_soft_cost = {
-            'permitting': 0.10,  # $/W
-            'inspection': 0.05,  # $/W
-            'interconnection': 0.10,  # $/W
-            'overhead': 0.10   # $/W
-        }
+        currency_conversion = {"USD": 1, "BDT": 110}
+        selected_currency = "BDT"
+        rate = currency_conversion[selected_currency]
+
+        # Get component costs from form data with defaults
+        module_cost_per_w = float(data.get('module_cost', 0.35)) * rate
+        inverter_cost_per_w = float(data.get('inverter_cost', 0.10)) * rate
+        bos_cost_per_w = float(data.get('bos_cost', 0.30)) * rate  # Default sum of racking, wiring, disconnect
+        installation_cost_per_w = float(data.get('installation_cost', 0.40)) * rate  # Default sum of labor, overhead, profit
+        soft_cost_per_w = float(data.get('soft_cost', 0.35)) * rate  # Default sum of permitting, inspection, etc.
+
+        # Calculate system size in watts
+        system_size_w = system_size_kw * 1000
         
-        # Scale costs based on system size (economies of scale)
-        size_factor = min(1.0, math.log10(system_size_kw) / math.log10(100))  # Reduces cost for larger systems
+        # Calculate economies of scale factor
+        size_factor = min(1.0, math.log10(system_size_kw) / math.log10(100))
         
-        # Calculate component costs
-        module_cost = system_size_kw * 1000 * (base_module_cost * (1 - 0.1 * size_factor))
-        inverter_cost = system_size_kw * 1000 * (base_inverter_cost * (1 - 0.1 * size_factor))
-        bos_cost = system_size_kw * 1000 * sum(base_bos_cost.values()) * (1 - 0.15 * size_factor)
-        installation_cost = system_size_kw * 1000 * sum(base_installation_cost.values()) * (1 - 0.2 * size_factor)
-        soft_cost = system_size_kw * 1000 * sum(base_soft_cost.values()) * (1 - 0.1 * size_factor)
+        # Calculate component costs with scale factors
+        module_cost = system_size_w * module_cost_per_w * (1 - 0.1 * size_factor)
+        inverter_cost = system_size_w * inverter_cost_per_w * (1 - 0.1 * size_factor)
+        bos_cost = system_size_w * bos_cost_per_w * (1 - 0.15 * size_factor)
+        installation_cost = system_size_w * installation_cost_per_w * (1 - 0.2 * size_factor)
+        soft_cost = system_size_w * soft_cost_per_w * (1 - 0.1 * size_factor)
         
-        total_capex = module_cost + inverter_cost + bos_cost + installation_cost + soft_cost
+        # Calculate total installed cost
+        total_installed_cost = module_cost + inverter_cost + bos_cost + installation_cost + soft_cost
         
-        # O&M costs (based on NREL data)
-        annual_opex = 15 * system_size_kw  # $15/kW-year for fixed-tilt residential/commercial
-        
-        # Financial parameters
-        annual_degradation = 0.005  # 0.5% annual degradation (industry standard)
-        electricity_price_escalation = 0.025  # 2.5% annual increase (historical average)
-        discount_rate = 0.06  # 6% discount rate (typical for solar projects)
-        project_life = 25  # 25 years (standard warranty period)
-        
-        # Calculate cash flows
-        cashflows = []
-        cumulative_cashflow = [-total_capex]
-        annual_energy = annual_energy_kwh
-        electricity_price = 0.12  # $/kWh
-        
-        for year in range(1, project_life + 1):
-            # Calculate degraded energy production
-            annual_energy *= (1 - annual_degradation)
-            # Calculate escalated electricity price
-            electricity_price *= (1 + electricity_price_escalation)
-            # Calculate revenue
-            revenue = annual_energy * electricity_price
-            # Calculate net cash flow
-            net_cashflow = revenue - annual_opex
-            cashflows.append(float(net_cashflow))
-            cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
-        
-        # Calculate NPV
-        npv = -total_capex
-        for i, cashflow in enumerate(cashflows, 1):
-            npv += cashflow / ((1 + discount_rate) ** i)
-        
-        # Calculate LCOE
-        total_energy = 0
-        total_cost = total_capex
-        for i in range(project_life):
-            energy_produced = annual_energy_kwh * ((1 - annual_degradation) ** i)
-            total_energy += energy_produced / ((1 + discount_rate) ** i)
-            total_cost += annual_opex / ((1 + discount_rate) ** i)
-        
-        lcoe = total_cost / total_energy if total_energy > 0 else 0
-        
-        # Find payback period
-        payback_period = None
-        for i, cum_cashflow in enumerate(cumulative_cashflow):
-            if cum_cashflow >= 0:
-                payback_period = i
-                break
-        if payback_period is None:
-            payback_period = project_life
-            
         # Cost breakdown for pie chart
         cost_breakdown = {
             'Modules': float(module_cost),
@@ -672,67 +617,31 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'Installation': float(installation_cost),
             'Soft Costs': float(soft_cost)
         }
-        
-        # Currency conversion rates
-        currency_conversion = {"USD": 1, "BDT": 110}
-        default_currency = "BDT"
-        
-        # Base costs in USD
-        base_costs = {
-            'module': 0.35,      # $/W
-            'inverter': 0.10,    # $/W
-            'bos': {
-                'racking': 0.10,
-                'wiring': 0.15,
-                'disconnect': 0.05
-            },
-            'installation': {
-                'labor': 0.20,
-                'overhead': 0.10,
-                'profit': 0.10
-            },
-            'soft': {
-                'permitting': 0.10,
-                'inspection': 0.05,
-                'interconnection': 0.10,
-                'overhead': 0.10
-            }
-        }
-        
-        # Default values in USD
+
+        # Default values for financial calculations
         defaults = {
-            'electricity_rate': 0.07,  # $0.07/kWh (7 BDT/kWh)
-            'maintenance_cost': 15,    # $15/kW-year
-            'degradation': 0.005,      # 0.5% per year
-            'price_escalation': 0.025  # 2.5% per year
+            'electricity_rate': float(data.get('electricity_rate', 0.07)) * rate,  # $0.07/kWh default
+            'maintenance_cost': float(data.get('maintenance_cost', 15)) * rate,    # $15/kW-year default
+            'degradation': float(data.get('degradation', 0.005)),      # 0.5% per year default
+            'price_escalation': float(data.get('price_escalation', 0.025))  # 2.5% per year default
         }
         
-        # Convert to selected currency
-        selected_currency = "BDT"
-        rate = currency_conversion[selected_currency]
+        financial_metrics = calculate_financial_metrics(
+            annual_energy=annual_energy_kwh,
+            installed_cost=total_installed_cost,  
+            electricity_rate=defaults['electricity_rate'],  
+            maintenance_cost=defaults['maintenance_cost'],    
+            project_life=25,  
+            fed_credit=0.26,  
+            st_credit=0,  
+            interest_rate=0.06,  
+            degradation=defaults['degradation'],      
+            price_escalation=defaults['price_escalation']  
+        )
         
-        # Calculate costs with economies of scale
-        system_size_w = system_size_kw * 1000
-        size_factor = min(1.0, math.log10(system_size_kw) / math.log10(100))
+        financial_metrics['cost_breakdown'] = cost_breakdown
         
-        # Calculate component costs with scale factors
-        module_cost = system_size_w * (base_costs['module'] * (1 - 0.1 * size_factor)) * rate
-        inverter_cost = system_size_w * (base_costs['inverter'] * (1 - 0.1 * size_factor)) * rate
-        bos_cost = system_size_w * sum(base_costs['bos'].values()) * (1 - 0.15 * size_factor) * rate
-        installation_cost = system_size_w * sum(base_costs['installation'].values()) * (1 - 0.2 * size_factor) * rate
-        soft_cost = system_size_w * sum(base_costs['soft'].values()) * (1 - 0.1 * size_factor) * rate
-        
-        total_capex = module_cost + inverter_cost + bos_cost + installation_cost + soft_cost
-        
-        # O&M costs
-        annual_opex = defaults['maintenance_cost'] * system_size_kw * rate
-        
-        # Financial parameters
-        annual_degradation = defaults['degradation']
-        electricity_price = defaults['electricity_rate'] * rate
-        electricity_price_escalation = defaults['price_escalation']
-        
-        return {
+        performance_data = {
             'annual_energy': annual_energy_kwh,
             'peak_dc_power': peak_dc_kW,
             'peak_ac_power': peak_ac_kW,
@@ -753,12 +662,12 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'module_power': max(float(module.get('STC', 0)), 0.1),
             'daily_energy': daily_energy,
             'monthly_energy': monthly_energy,
-            'lcoe': float(lcoe),
-            'npv': float(npv),
-            'payback_period': float(payback_period if payback_period else project_life),
+            'lcoe': float(financial_metrics['lcoe']),
+            'npv': float(financial_metrics['net_present_value']),
+            'payback_period': float(financial_metrics['simple_payback']),
             'cost_breakdown': cost_breakdown,
-            'cumulative_cashflow': [float(x) for x in cumulative_cashflow],
-            'annual_cashflow': [float(-total_capex)] + cashflows,  # Include initial investment
+            'cumulative_cashflow': [float(x) for x in financial_metrics['cumulative_cashflow']],
+            'annual_cashflow': [float(-total_installed_cost)] + financial_metrics['annual_cashflow'],  
             'min_design_temp': float(min_db_temp_ashrae),
             'max_design_temp': float(max_db_temp_ashrae),
             'effective_irradiance': float(wdf['effective_irradiance'].mean()),
@@ -767,6 +676,8 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'monthly_temperature': [float(x) for x in weather['air_temperature'].resample('M').mean().tolist()],
             'hourly_wind_speed': [float(x) for x in weather['wind_speed'].tolist()]
         }
+        
+        return performance_data
     except Exception as e:
         import traceback
         print("Error in calculate_pv_output:", str(e))
@@ -1093,23 +1004,6 @@ def calculate():
                 "error": performance_data.get('error', 'Failed to calculate PV system performance')
             }), 400
 
-        # Calculate financial metrics with safety checks
-        financial_metrics = calculate_financial_metrics(
-            annual_energy=performance_data['annual_energy'],
-            installed_cost=max(float(data.get('installed_cost', 80000)), 1),  # Minimum $1
-            electricity_rate=max(float(data.get('electricity_rate', 0.12)), 0.01),  # Minimum $0.01/kWh
-            maintenance_cost=max(float(data.get('maintenance_cost', 15 * system_size)), 0),  # $15/kW-year default
-            project_life=max(int(data.get('project_life', 25)), 1),  # Minimum 1 year
-            fed_credit=min(max(float(data.get('federal_tax_credit', 0.30)), 0), 1),  # 0-100%
-            st_credit=min(max(float(data.get('state_tax_credit', 0)), 0), 1),  # 0-100%
-            interest_rate=max(float(data.get('interest_rate', 0.06)), 0.01),  # Minimum 1%
-            degradation=max(float(data.get('degradation', 0.005)), 0),  # Default 0.5%
-            price_escalation=max(float(data.get('price_escalation', 0.025)), 0)  # Default 2.5%
-        )
-            
-        # Add financial metrics to performance data
-        performance_data.update(financial_metrics)
-        
         return jsonify({
             "success": True,
             "system_analysis": performance_data,

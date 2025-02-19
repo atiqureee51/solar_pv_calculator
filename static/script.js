@@ -215,28 +215,24 @@ function initializeMap() {
 }
 
 function updateSizingMethod() {
-    try {
-        const method = document.getElementById('sizing-method').value;
-        const systemSizeInputs = document.getElementById('system-size-inputs');
-        const areaInputs = document.getElementById('area-inputs');
-        const areaInfo = document.getElementById('area-info');
-        const mapContainer = document.getElementById('map-container');
-        
-        if (method === 'area') {
-            if (systemSizeInputs) systemSizeInputs.style.display = 'none';
-            if (areaInputs) areaInputs.style.display = 'block';
-            if (areaInfo) areaInfo.style.display = 'block';
-            if (mapContainer) mapContainer.style.display = 'block';
-            enableDrawControl();
-        } else {
-            if (systemSizeInputs) systemSizeInputs.style.display = 'block';
-            if (areaInputs) areaInputs.style.display = 'none';
-            if (areaInfo) areaInfo.style.display = 'none';
-            if (mapContainer) mapContainer.style.display = 'none';
-            disableDrawControl();
-        }
-    } catch (error) {
-        console.error('Error updating sizing method:', error);
+    const method = document.getElementById('sizing-method').value;
+    const systemSizeInputs = document.getElementById('system-size-inputs');
+    const areaInputs = document.getElementById('area-inputs');
+    const areaInfo = document.getElementById('area-info');
+    const mapContainer = document.getElementById('map-container');
+    
+    if (method === 'area') {
+        if (systemSizeInputs) systemSizeInputs.style.display = 'none';
+        if (areaInputs) areaInputs.style.display = 'block';
+        if (areaInfo) areaInfo.style.display = 'block';
+        if (mapContainer) mapContainer.style.display = 'block';
+        enableDrawControl();
+    } else {
+        if (systemSizeInputs) systemSizeInputs.style.display = 'block';
+        if (areaInputs) areaInputs.style.display = 'none';
+        if (areaInfo) areaInfo.style.display = 'none';
+        if (mapContainer) mapContainer.style.display = 'none';
+        disableDrawControl();
     }
 }
 
@@ -1217,38 +1213,34 @@ async function handleFormSubmit(event) {
     showLoading();
 
     const formData = {
-        sizing_method: document.getElementById('sizing-method').value,
-        system_size: document.getElementById('system-size').value,
-        area: document.getElementById('area').value,
-        latitude: parseFloat($('#latitude').val()),
-        longitude: parseFloat($('#longitude').val()),
-        tilt: parseFloat($('#tilt').val()) || 30,
+        system_size: parseFloat($('#system-size').val()) || 0,
+        module_type: $('#module-type').val(),
+        inverter_type: $('#inverter-type').val(),
+        location: $('#location').val(),
+        tilt: parseFloat($('#tilt').val()) || 0,
         azimuth: parseFloat($('#azimuth').val()) || 180,
+        albedo: parseFloat($('#albedo').val()) || 0.2,
+        losses: parseFloat($('#losses').val()) || 14,
         
-        module: $('#module').val(),
-        inverter: $('#inverter').val(),
+        // Component costs
+        module_cost: parseFloat($('#module-cost').val()) || 0.35,
+        inverter_cost: parseFloat($('#inverter-cost').val()) || 0.10,
+        bos_cost: parseFloat($('#bos-cost').val()) || 0.30,
+        installation_cost: parseFloat($('#installation-cost').val()) || 0.40,
+        soft_cost: parseFloat($('#soft-cost').val()) || 0.35,
         
-        system_type: $('#system-type').val(),
-        mount_type: ($('#temp-model-family').val() === 'pvsyst')
-            ? $('#pvsyst-type').val()
-            : $('#sapm-type').val(),
-        
-        temp_model: $('#temp-model-family').val() || 'sapm',
-        
-        installed_cost: parseFloat($('#installed-cost').val()) || 80000,
-        electricity_rate: parseFloat($('#electricity-rate').val()) || 0.08,
-        federal_tax_credit: parseFloat($('#federal-tax-credit').val()) || 0,
-        state_tax_credit: parseFloat($('#state-tax-credit').val()) || 0,
-        interest_rate: parseFloat($('#interest-rate').val()) || 5,
+        // Financial parameters
+        electricity_rate: parseFloat($('#electricity-rate').val()) || 0.12,
+        maintenance_cost: parseFloat($('#maintenance-cost').val()) || 15,
+        degradation: parseFloat($('#degradation').val()) || 0.005,
+        price_escalation: parseFloat($('#price-escalation').val()) || 0.025,
         project_life: parseInt($('#project-life').val()) || 25,
-        maintenance_cost: parseFloat($('#maintenance-cost').val()) || 1000,
-        
-        // Add new parameters
-        gcr: parseFloat($('#gcr').val()) || 0.4,
-        land_cost: parseFloat($('#land_cost').val()) || 0
+        interest_rate: parseFloat($('#interest-rate').val()) || 0.06,
+        federal_tax_credit: parseFloat($('#federal-tax-credit').val()) || 0.30,
+        state_tax_credit: parseFloat($('#state-tax-credit').val()) || 0
     };
 
-    //console.log('Form Data:', formData);
+    console.log('Form Data:', formData);
 
     try {
         const response = await $.ajax({
@@ -1289,35 +1281,31 @@ function updateCalculations() {
     showLoading();
 
     const formData = {
-        sizing_method: document.getElementById('sizing-method').value,
-        system_size: document.getElementById('system-size').value,
-        area: document.getElementById('area').value,
-        latitude: parseFloat($('#latitude').val()),
-        longitude: parseFloat($('#longitude').val()),
-        tilt: parseFloat($('#tilt').val()) || 30,
+        system_size: parseFloat($('#system-size').val()) || 0,
+        module_type: $('#module-type').val(),
+        inverter_type: $('#inverter-type').val(),
+        location: $('#location').val(),
+        tilt: parseFloat($('#tilt').val()) || 0,
         azimuth: parseFloat($('#azimuth').val()) || 180,
+        albedo: parseFloat($('#albedo').val()) || 0.2,
+        losses: parseFloat($('#losses').val()) || 14,
         
-        module: $('#module').val(),
-        inverter: $('#inverter').val(),
+        // Component costs
+        module_cost: parseFloat($('#module-cost').val()) || 0.35,
+        inverter_cost: parseFloat($('#inverter-cost').val()) || 0.10,
+        bos_cost: parseFloat($('#bos-cost').val()) || 0.30,
+        installation_cost: parseFloat($('#installation-cost').val()) || 0.40,
+        soft_cost: parseFloat($('#soft-cost').val()) || 0.35,
         
-        system_type: $('#system-type').val(),
-        mount_type: ($('#temp-model-family').val() === 'pvsyst')
-            ? $('#pvsyst-type').val()
-            : $('#sapm-type').val(),
-        
-        temp_model: $('#temp-model-family').val() || 'sapm',
-        
-        installed_cost: parseFloat($('#installed-cost').val()) || 80000,
-        electricity_rate: parseFloat($('#electricity-rate').val()) || 0.08,
-        federal_tax_credit: parseFloat($('#federal-tax-credit').val()) || 0,
-        state_tax_credit: parseFloat($('#state-tax-credit').val()) || 0,
-        interest_rate: parseFloat($('#interest-rate').val()) || 5,
+        // Financial parameters
+        electricity_rate: parseFloat($('#electricity-rate').val()) || 0.12,
+        maintenance_cost: parseFloat($('#maintenance-cost').val()) || 15,
+        degradation: parseFloat($('#degradation').val()) || 0.005,
+        price_escalation: parseFloat($('#price-escalation').val()) || 0.025,
         project_life: parseInt($('#project-life').val()) || 25,
-        maintenance_cost: parseFloat($('#maintenance-cost').val()) || 1000,
-        
-        // Add new parameters
-        gcr: parseFloat($('#gcr').val()) || 0.4,
-        land_cost: parseFloat($('#land_cost').val()) || 0
+        interest_rate: parseFloat($('#interest-rate').val()) || 0.06,
+        federal_tax_credit: parseFloat($('#federal-tax-credit').val()) || 0.30,
+        state_tax_credit: parseFloat($('#state-tax-credit').val()) || 0
     };
 
     console.log('Form Data:', formData);
@@ -2089,108 +2077,47 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 })
 
-
-// Handle region change
-function handleRegionChange(region) {
-    const defaults = getDefaultsForRegion(region);
+// Update cost breakdown chart
+function updateCostBreakdown(costBreakdown) {
+    if (!costBreakdown) return;
     
-    // Update map view and marker
-    if (map) {
-        map.setView([defaults.lat, defaults.lon], defaults.zoom);
-        marker.setLatLng([defaults.lat, defaults.lon]);
+    const costData = {
+        labels: Object.keys(costBreakdown),
+        datasets: [{
+            data: Object.values(costBreakdown),
+            backgroundColor: [
+                '#FF6384',
+                '#36A2EB',
+                '#FFCE56',
+                '#4BC0C0',
+                '#9966FF'
+            ]
+        }]
+    };
+
+    if (costBreakdownChart) {
+        costBreakdownChart.destroy();
     }
-    
-    // Update form values
-    $('#latitude').val(defaults.lat.toFixed(6));
-    $('#longitude').val(defaults.lon.toFixed(6));
-    
-    // Update currency if needed
-    if (region === 'bangladesh' && $('#currency').val() !== 'BDT') {
-        $('#currency').val('BDT').trigger('change');
-    } else if (region === 'usa' && $('#currency').val() !== 'USD') {
-        $('#currency').val('USD').trigger('change');
-    }
-}
 
-// House Energy Calculator
-const APPLIANCE_POWER = {
-    ac: 1500,        // Watts for typical AC
-    fridge: 150,     // Watts for typical refrigerator
-    light: 10,       // Watts per LED bulb
-    tv: 100,         // Watts for typical TV
-};
-
-function initHouseEnergyCalculator() {
-    // Enable/disable controls based on checkbox state
-    document.querySelectorAll('.appliance-item input[type="checkbox"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const controls = this.closest('.appliance-item').querySelectorAll('select, input[type="number"]');
-            controls.forEach(control => {
-                control.disabled = !this.checked;
-            });
-            calculateTotalEnergy();
-        });
-    });
-
-    // Calculate on any input change
-    document.querySelectorAll('.appliance-item select, .appliance-item input[type="number"]').forEach(input => {
-        input.addEventListener('change', calculateTotalEnergy);
-        input.addEventListener('input', calculateTotalEnergy);
-    });
-
-    // Apply recommended size button
-    document.getElementById('apply-recommended-size').addEventListener('click', function() {
-        const recommendedSize = parseFloat(document.getElementById('recommended-system-size').textContent);
-        if (recommendedSize > 0) {
-            document.getElementById('system-size').value = recommendedSize;
-            // Trigger any existing system size change handlers
-            document.getElementById('system-size').dispatchEvent(new Event('change'));
+    const ctx = document.getElementById('costBreakdownChart').getContext('2d');
+    costBreakdownChart = new Chart(ctx, {
+        type: 'pie',
+        data: costData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.raw;
+                            return `${context.label}: $${value.toLocaleString(undefined, {maximumFractionDigits: 0})}`;
+                        }
+                    }
+                }
+            }
         }
     });
-}
-
-function calculateTotalEnergy() {
-    let totalWattHours = 0;
-
-    // AC calculation
-    if (document.getElementById('ac-check').checked) {
-        const count = parseInt(document.getElementById('ac-count').value) || 0;
-        const hours = parseFloat(document.getElementById('ac-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.ac * count * hours;
-    }
-
-    // Refrigerator calculation (24 hours fixed)
-    if (document.getElementById('fridge-check').checked) {
-        const count = parseInt(document.getElementById('fridge-count').value) || 0;
-        totalWattHours += APPLIANCE_POWER.fridge * count * 24;
-    }
-
-    // LED Lighting calculation
-    if (document.getElementById('light-check').checked) {
-        const count = parseInt(document.getElementById('light-count').value) || 0;
-        const hours = parseFloat(document.getElementById('light-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.light * count * hours;
-    }
-
-    // TV calculation
-    if (document.getElementById('tv-check').checked) {
-        const count = parseInt(document.getElementById('tv-count').value) || 0;
-        const hours = parseFloat(document.getElementById('tv-hours').value) || 0;
-        totalWattHours += APPLIANCE_POWER.tv * count * hours;
-    }
-
-    // Custom appliance calculation
-    if (document.getElementById('custom-check').checked) {
-        const watts = parseFloat(document.getElementById('custom-watts').value) || 0;
-        const hours = parseFloat(document.getElementById('custom-hours').value) || 0;
-        totalWattHours += watts * hours;
-    }
-
-    // Convert to kWh
-    const totalKwh = totalWattHours / 1000;
-    document.getElementById('total-daily-kwh').textContent = totalKwh.toFixed(2);
-
-    // Calculate recommended system size (assuming 4 peak sun hours and 20% system losses)
-    const recommendedSize = (totalKwh / 4) * 1.2;
-    document.getElementById('recommended-system-size').textContent = recommendedSize.toFixed(2) + ' kW';
 }
