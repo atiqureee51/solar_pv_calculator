@@ -169,12 +169,12 @@ def calculate_financial_metrics(
     degradation=0.005, price_escalation=0.025
 ):
     try:
+        # Calculate total capital cost after tax credits
+        total_capital_cost = installed_cost * (1 - fed_credit - st_credit)
+        
         # Initialize arrays for cash flows
         cashflows = []
-        cumulative_cashflow = [-installed_cost]
-        
-        # Calculate total capital cost after tax credits
-        total_capital_cost = installed_cost - (installed_cost * fed_credit) - (installed_cost * st_credit)
+        cumulative_cashflow = [-total_capital_cost]  # Start with negative capital cost
         
         # Calculate annual savings with degradation and price escalation
         annual_savings = 0
@@ -191,63 +191,59 @@ def calculate_financial_metrics(
             # Calculate net cashflow (include maintenance cost)
             net_cashflow = year_savings - maintenance_cost
             cashflows.append(float(net_cashflow))
+            
+            # Update cumulative cashflow
             cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
             
             # Update for next year
-            current_energy *= (1 - degradation)
-            current_rate *= (1 + price_escalation)
+            current_energy *= (1 - degradation)  # Account for panel degradation
+            current_rate *= (1 + price_escalation)  # Account for electricity price escalation
+            annual_savings += year_savings
         
         # Calculate NPV
-        npv = -total_capital_cost
+        npv = -total_capital_cost  # Start with negative capital cost
         for i, cashflow in enumerate(cashflows, 1):
             npv += cashflow / ((1 + interest_rate) ** i)
         
-        # Calculate average annual values
-        avg_annual_energy = total_energy / project_life
-        avg_annual_savings = annual_savings / project_life
-        
-        # Calculate simple payback period (using first year savings)
-        first_year_savings = annual_energy * electricity_rate
+        # Calculate simple payback period
+        first_year_savings = annual_energy * electricity_rate - maintenance_cost
         payback_period = total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf')
         
         # Calculate LCOE
-        total_cost = total_capital_cost
+        discounted_cost = total_capital_cost  # Start with capital cost
         discounted_energy = 0
-        for i in range(project_life):
-            energy_produced = annual_energy * ((1 - degradation) ** i)
-            discounted_energy += energy_produced / ((1 + interest_rate) ** i)
-            total_cost += maintenance_cost / ((1 + interest_rate) ** i)
+        current_energy = annual_energy
         
-        lcoe = total_cost / discounted_energy if discounted_energy > 0 else 0
+        for year in range(project_life):
+            # Add maintenance cost for this year
+            discounted_cost += maintenance_cost / ((1 + interest_rate) ** (year + 1))
+            # Add degraded energy production
+            discounted_energy += current_energy / ((1 + interest_rate) ** (year + 1))
+            current_energy *= (1 - degradation)
         
-        # Calculate CO2 savings (using average annual energy)
-        co2_savings = (avg_annual_energy * 0.7 / 1000)  # 0.7 kg/kWh => tons
+        lcoe = discounted_cost / discounted_energy if discounted_energy > 0 else float('inf')
+        
+        # Calculate CO2 savings (using EPA average of 0.7 kg CO2/kWh)
+        co2_savings = (annual_energy * 0.7 / 1000)  # Convert to metric tons
         
         return {
-            'annual_energy_kwh': float(avg_annual_energy),
-            'annual_savings': float(avg_annual_savings),
+            'annual_savings': float(first_year_savings),
             'payback_period': float(payback_period),
             'lcoe': float(lcoe),
             'co2_savings': float(co2_savings),
             'npv': float(npv),
-            'total_capital_cost': float(total_capital_cost),
-            'total_savings': float(annual_savings - total_capital_cost - (maintenance_cost * project_life)),
-            'cashflow': [float(x) for x in cumulative_cashflow],
-            'annual_cashflow': [float(-total_capital_cost)] + [float(x) for x in cashflows]
+            'cashflow': cumulative_cashflow
         }
+        
     except Exception as e:
         print(f"Error in financial calculations: {str(e)}")
         return {
-            'annual_energy_kwh': float(annual_energy),
             'annual_savings': 0.0,
             'payback_period': float('inf'),
-            'lcoe': 0.0,
+            'lcoe': float('inf'),
             'co2_savings': 0.0,
             'npv': 0.0,
-            'total_capital_cost': float(installed_cost),
-            'total_savings': 0.0,
-            'cashflow': [0.0],
-            'annual_cashflow': [0.0]
+            'cashflow': [0.0]
         }
 
 class ASHRAE_VERSION(Enum):
