@@ -1491,8 +1491,8 @@ function updateResults(systemAnalysis) {
     // Update cashflow chart
     if (systemAnalysis.results.annual_cashflows && systemAnalysis.results.cumulative_cashflow) {
         const years = Array.from({length: systemAnalysis.results.annual_cashflows.length}, (_, i) => i);
-        const annualCashflow = systemAnalysis.results.annual_cashflows.map(val => val / 1000); // Convert to thousands
-        const cumulativeCashflow = systemAnalysis.results.cumulative_cashflow.map(val => val / 1000);
+        const annualCashflow = systemAnalysis.results.annual_cashflows;
+        const cumulativeCashflow = systemAnalysis.results.cumulative_cashflow;
 
         const ctx = document.getElementById('cashflow-chart');
         
@@ -1503,6 +1503,7 @@ function updateResults(systemAnalysis) {
         
         // Create new chart
         cashflowChart = new Chart(ctx, {
+            type: 'bar',
             data: {
                 labels: years,
                 datasets: [{
@@ -1510,6 +1511,7 @@ function updateResults(systemAnalysis) {
                     label: 'Annual Cash Flow',
                     data: annualCashflow,
                     backgroundColor: annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66'),
+                    yAxisID: 'y',
                     order: 2
                 }, {
                     type: 'line',
@@ -1519,11 +1521,13 @@ function updateResults(systemAnalysis) {
                     borderWidth: 2,
                     fill: false,
                     tension: 0.1,
+                    yAxisID: 'y',
                     order: 1
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 scales: {
                     x: {
                         title: {
@@ -1532,6 +1536,9 @@ function updateResults(systemAnalysis) {
                         }
                     },
                     y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
                         beginAtZero: false,
                         title: {
                             display: true,
@@ -1539,7 +1546,7 @@ function updateResults(systemAnalysis) {
                         },
                         ticks: {
                             callback: function(value) {
-                                return symbol + value.toFixed(0) + 'k';
+                                return symbol + (value/1000).toFixed(0) + 'k';
                             }
                         }
                     }
@@ -1554,7 +1561,7 @@ function updateResults(systemAnalysis) {
                             label: function(context) {
                                 const label = context.dataset.label || '';
                                 const value = context.raw;
-                                return label + ': ' + symbol + (value * 1000).toFixed(0);
+                                return label + ': ' + symbol + value.toFixed(0);
                             }
                         }
                     }

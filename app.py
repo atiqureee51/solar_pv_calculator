@@ -169,18 +169,45 @@ def calculate_financial_metrics(
     degradation=0.005, price_escalation=0.025
 ):
     try:
+        print("\nFinancial Metrics Calculation:")
+        print(f"Initial inputs:")
+        print(f"Annual Energy: {annual_energy} kWh")
+        print(f"Installed Cost: ${installed_cost}")
+        print(f"Electricity Rate: ${electricity_rate}/kWh")
+        print(f"Annual Maintenance: ${maintenance_cost}")
+        
         # Calculate total capital cost after tax credits
         total_capital_cost = float(installed_cost * (1 - fed_credit - st_credit))
+        print(f"Total Capital Cost (after credits): ${total_capital_cost}")
+        
+        # Calculate first year savings
+        first_year_savings = float(annual_energy * electricity_rate - maintenance_cost)
+        print(f"First Year Savings: ${first_year_savings}")
+        
+        # Calculate payback period
+        if first_year_savings > 0:
+            payback_period = float(total_capital_cost / first_year_savings)
+            print(f"Payback Period: {payback_period:.1f} years")
+        else:
+            payback_period = float('inf')
+            print("Payback Period: Infinite (no savings)")
         
         # Initialize arrays for cash flows
-        annual_cashflows = [float(-total_capital_cost)]  # Year 0 is just the capital cost
-        cumulative_cashflow = [float(-total_capital_cost)]
+        annual_cashflows = []
+        cumulative_cashflow = []
+        
+        # Year 0: Initial investment
+        annual_cashflows.append(float(-total_capital_cost))
+        cumulative_cashflow.append(float(-total_capital_cost))
         
         # Calculate annual savings with degradation and price escalation
         current_energy = float(annual_energy)
         current_rate = float(electricity_rate)
         
-        for year in range(project_life):
+        print("\nAnnual Cashflows:")
+        print(f"Year 0: ${annual_cashflows[0]:.2f} (Initial Investment)")
+        
+        for year in range(1, project_life + 1):
             # Calculate energy production with degradation
             year_energy = current_energy
             
@@ -194,6 +221,9 @@ def calculate_financial_metrics(
             # Update cumulative cashflow
             cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
             
+            print(f"Year {year}: Energy={year_energy:.0f}kWh, Rate=${current_rate:.3f}/kWh")
+            print(f"         Savings=${year_savings:.2f}, Net=${net_cashflow:.2f}, Cumulative=${cumulative_cashflow[-1]:.2f}")
+            
             # Update for next year
             current_energy *= (1 - degradation)  # Account for panel degradation
             current_rate *= (1 + price_escalation)  # Account for electricity price escalation
@@ -202,10 +232,6 @@ def calculate_financial_metrics(
         npv = float(-total_capital_cost)  # Start with negative capital cost
         for i, cashflow in enumerate(annual_cashflows[1:], 1):  # Skip year 0 as it's already included
             npv += float(cashflow / ((1 + interest_rate/100) ** i))
-        
-        # Calculate simple payback period
-        first_year_savings = float(annual_energy * electricity_rate - maintenance_cost)
-        payback_period = float(total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf'))
         
         # Calculate LCOE
         discounted_cost = float(total_capital_cost)  # Start with capital cost
@@ -224,18 +250,27 @@ def calculate_financial_metrics(
         # Calculate CO2 savings (using EPA average of 0.7 kg CO2/kWh)
         co2_savings = float(annual_energy * 0.7 / 1000)  # Convert to metric tons
         
+        print("\nFinal Results:")
+        print(f"NPV: ${npv:.2f}")
+        print(f"LCOE: ${lcoe:.3f}/kWh")
+        print(f"CO2 Savings: {co2_savings:.1f} metric tons")
+        print(f"Annual Cashflows: {[f'${x:.2f}' for x in annual_cashflows]}")
+        print(f"Cumulative Cashflow: {[f'${x:.2f}' for x in cumulative_cashflow]}")
+        
         return {
             'annual_savings': float(first_year_savings),
             'payback_period': float(payback_period),
             'lcoe': float(lcoe),
             'npv': float(npv),
             'co2_savings': float(co2_savings),
-            'annual_cashflows': [float(x) for x in annual_cashflows],
-            'cumulative_cashflow': [float(x) for x in cumulative_cashflow]
+            'annual_cashflows': annual_cashflows,
+            'cumulative_cashflow': cumulative_cashflow
         }
         
     except Exception as e:
         print(f"Error in financial calculations: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             'annual_savings': 0.0,
             'payback_period': float('inf'),
