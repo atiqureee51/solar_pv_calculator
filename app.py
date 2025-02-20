@@ -170,15 +170,15 @@ def calculate_financial_metrics(
 ):
     try:
         # Calculate total capital cost after tax credits
-        total_capital_cost = installed_cost * (1 - fed_credit - st_credit)
+        total_capital_cost = float(installed_cost * (1 - fed_credit - st_credit))
         
         # Initialize arrays for cash flows
-        annual_cashflows = [-total_capital_cost]  # Year 0 is just the capital cost
-        cumulative_cashflow = [-total_capital_cost]
+        annual_cashflows = [float(-total_capital_cost)]  # Year 0 is just the capital cost
+        cumulative_cashflow = [float(-total_capital_cost)]
         
         # Calculate annual savings with degradation and price escalation
-        current_energy = annual_energy
-        current_rate = electricity_rate
+        current_energy = float(annual_energy)
+        current_rate = float(electricity_rate)
         
         for year in range(project_life):
             # Calculate energy production with degradation
@@ -188,8 +188,8 @@ def calculate_financial_metrics(
             year_savings = year_energy * current_rate
             
             # Calculate net cashflow (savings minus maintenance)
-            net_cashflow = year_savings - maintenance_cost
-            annual_cashflows.append(float(net_cashflow))
+            net_cashflow = float(year_savings - maintenance_cost)
+            annual_cashflows.append(net_cashflow)
             
             # Update cumulative cashflow
             cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
@@ -199,30 +199,30 @@ def calculate_financial_metrics(
             current_rate *= (1 + price_escalation)  # Account for electricity price escalation
         
         # Calculate NPV
-        npv = -total_capital_cost  # Start with negative capital cost
+        npv = float(-total_capital_cost)  # Start with negative capital cost
         for i, cashflow in enumerate(annual_cashflows[1:], 1):  # Skip year 0 as it's already included
-            npv += cashflow / ((1 + interest_rate/100) ** i)
+            npv += float(cashflow / ((1 + interest_rate/100) ** i))
         
         # Calculate simple payback period
-        first_year_savings = annual_energy * electricity_rate - maintenance_cost
-        payback_period = total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf')
+        first_year_savings = float(annual_energy * electricity_rate - maintenance_cost)
+        payback_period = float(total_capital_cost / first_year_savings if first_year_savings > 0 else float('inf'))
         
         # Calculate LCOE
-        discounted_cost = total_capital_cost  # Start with capital cost
-        discounted_energy = 0
-        current_energy = annual_energy
+        discounted_cost = float(total_capital_cost)  # Start with capital cost
+        discounted_energy = 0.0
+        current_energy = float(annual_energy)
         
         for year in range(project_life):
             # Add maintenance cost for this year
-            discounted_cost += maintenance_cost / ((1 + interest_rate/100) ** (year + 1))
+            discounted_cost += float(maintenance_cost / ((1 + interest_rate/100) ** (year + 1)))
             # Add degraded energy production
-            discounted_energy += current_energy / ((1 + interest_rate/100) ** (year + 1))
+            discounted_energy += float(current_energy / ((1 + interest_rate/100) ** (year + 1)))
             current_energy *= (1 - degradation)
         
-        lcoe = discounted_cost / discounted_energy if discounted_energy > 0 else float('inf')
+        lcoe = float(discounted_cost / discounted_energy if discounted_energy > 0 else float('inf'))
         
         # Calculate CO2 savings (using EPA average of 0.7 kg CO2/kWh)
-        co2_savings = (annual_energy * 0.7 / 1000)  # Convert to metric tons
+        co2_savings = float(annual_energy * 0.7 / 1000)  # Convert to metric tons
         
         return {
             'annual_savings': float(first_year_savings),
@@ -936,6 +936,13 @@ def calculate():
         
         })
 
+        print("Financial metrics calculated:")
+        print(f"Annual Energy: {system_output['annual_energy']:.2f} kWh")
+        print(f"Installed Cost: ${installed_cost:.2f}")
+        print(f"Annual Savings: ${financial_metrics['annual_savings']:.2f}")
+        print(f"Annual Cashflows: {financial_metrics['annual_cashflows']}")
+        print(f"Cumulative Cashflow: {financial_metrics['cumulative_cashflow']}")
+
         # Final response structure
         response = {
             'success': True,
@@ -959,6 +966,8 @@ def calculate():
         
     except Exception as e:
         print(f"Error in calculate route: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)

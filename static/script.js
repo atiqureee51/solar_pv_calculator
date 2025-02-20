@@ -1494,75 +1494,79 @@ function updateResults(systemAnalysis) {
         const annualCashflow = systemAnalysis.results.annual_cashflows.map(val => val / 1000); // Convert to thousands
         const cumulativeCashflow = systemAnalysis.results.cumulative_cashflow.map(val => val / 1000);
 
-        if (!cashflowChart) {
-            const ctx = document.getElementById('cashflow-chart').getContext('2d');
-            cashflowChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: years,
-                    datasets: [{
-                        type: 'bar',
-                        label: 'Annual Cash Flow',
-                        data: annualCashflow,
-                        backgroundColor: annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66'),
-                        order: 2
-                    }, {
-                        type: 'line',
-                        label: 'Cumulative Cash Flow',
-                        data: cumulativeCashflow,
-                        borderColor: '#339af0',
-                        borderWidth: 2,
-                        fill: false,
-                        tension: 0.1,
-                        order: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        },
-                        y: {
-                            beginAtZero: false,
-                            title: {
-                                display: true,
-                                text: symbol + ' (thousands)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return symbol + value.toFixed(0) + 'k';
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
+        const ctx = document.getElementById('cashflow-chart');
+        
+        // Destroy existing chart if it exists
+        if (cashflowChart) {
+            cashflowChart.destroy();
+        }
+        
+        // Create new chart
+        cashflowChart = new Chart(ctx, {
+            data: {
+                labels: years,
+                datasets: [{
+                    type: 'bar',
+                    label: 'Annual Cash Flow',
+                    data: annualCashflow,
+                    backgroundColor: annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66'),
+                    order: 2
+                }, {
+                    type: 'line',
+                    label: 'Cumulative Cash Flow',
+                    data: cumulativeCashflow,
+                    borderColor: '#339af0',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.1,
+                    order: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
                         title: {
                             display: true,
-                            text: 'Cash Flow Analysis'
+                            text: 'Year'
+                        }
+                    },
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: symbol + ' (thousands)'
                         },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.dataset.label || '';
-                                    const value = context.raw;
-                                    return label + ': ' + symbol + (value * 1000).toFixed(0);
-                                }
+                        ticks: {
+                            callback: function(value) {
+                                return symbol + value.toFixed(0) + 'k';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Cash Flow Analysis'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                const value = context.raw;
+                                return label + ': ' + symbol + (value * 1000).toFixed(0);
                             }
                         }
                     }
                 }
-            });
-        } else {
-            cashflowChart.data.labels = years;
-            cashflowChart.data.datasets[0].data = annualCashflow;
-            cashflowChart.data.datasets[0].backgroundColor = annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66');
-            cashflowChart.data.datasets[1].data = cumulativeCashflow;
-            cashflowChart.update();
-        }
+            }
+        });
+        
+        console.log("Chart data:", {
+            years: years,
+            annual: annualCashflow,
+            cumulative: cumulativeCashflow
+        });
     }
 
     // ---------- MIDDLE DASHBOARD ----------
@@ -1651,11 +1655,12 @@ function updateResults(systemAnalysis) {
                         datasets: [{
                             data: Object.values(costData),
                             backgroundColor: [
-                                'rgba(255, 99, 132, 0.8)',
-                                'rgba(54, 162, 235, 0.8)',
-                                'rgba(255, 206, 86, 0.8)',
-                                'rgba(75, 192, 192, 0.8)',
-                                'rgba(153, 102, 255, 0.8)'
+                                '#FF6384',
+                                '#36A2EB',
+                                '#FFCE56',
+                                '#4BC0C0',
+                                '#9966FF',
+                                '#FF9F40'
                             ]
                         }]
                     },
