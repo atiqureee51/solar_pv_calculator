@@ -1489,42 +1489,84 @@ function updateResults(systemAnalysis) {
     }
 
     // Update cashflow chart
-    if (systemAnalysis.results.cashflow) {
-        const years = Array.from({length: systemAnalysis.results.cashflow.length}, (_, i) => i);
-        const formattedCashflow = systemAnalysis.results.cashflow.map(val => val / 1000); // Convert to thousands
-        updateChart(
-            'cashflow-chart',
-            years,
-            formattedCashflow,
-            'Cumulative Cash Flow',
-            'Year',
-            symbol + ' (thousands)',
-            true,
-            {
-                scales: {
-                    y: {
-                        beginAtZero: false,  // Allow negative values
-                        ticks: {
-                            callback: function(value) {
-                                return symbol + value.toFixed(0) + 'k';
+    if (systemAnalysis.results.annual_cashflows && systemAnalysis.results.cumulative_cashflow) {
+        const years = Array.from({length: systemAnalysis.results.annual_cashflows.length}, (_, i) => i);
+        const annualCashflow = systemAnalysis.results.annual_cashflows.map(val => val / 1000); // Convert to thousands
+        const cumulativeCashflow = systemAnalysis.results.cumulative_cashflow.map(val => val / 1000);
+
+        if (!cashflowChart) {
+            const ctx = document.getElementById('cashflow-chart').getContext('2d');
+            cashflowChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        type: 'bar',
+                        label: 'Annual Cash Flow',
+                        data: annualCashflow,
+                        backgroundColor: annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66'),
+                        order: 2
+                    }, {
+                        type: 'line',
+                        label: 'Cumulative Cash Flow',
+                        data: cumulativeCashflow,
+                        borderColor: '#339af0',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        order: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: symbol + ' (thousands)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return symbol + value.toFixed(0) + 'k';
+                                }
                             }
                         }
-                    }
-                },
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return symbol + (context.raw * 1000).toFixed(0);
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cash Flow Analysis'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw;
+                                    return label + ': ' + symbol + (value * 1000).toFixed(0);
+                                }
                             }
                         }
                     }
                 }
-            }
-        );
+            });
+        } else {
+            cashflowChart.data.labels = years;
+            cashflowChart.data.datasets[0].data = annualCashflow;
+            cashflowChart.data.datasets[0].backgroundColor = annualCashflow.map(val => val < 0 ? '#ff6b6b' : '#51cf66');
+            cashflowChart.data.datasets[1].data = cumulativeCashflow;
+            cashflowChart.update();
+        }
     }
 
-    // ---------- Update Charts -----------
+    // ---------- MIDDLE DASHBOARD ----------
+    // Update charts
     const monthlyLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     // 1. Production Charts

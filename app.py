@@ -173,8 +173,8 @@ def calculate_financial_metrics(
         total_capital_cost = installed_cost * (1 - fed_credit - st_credit)
         
         # Initialize arrays for cash flows
-        cashflows = []
-        cumulative_cashflow = [-total_capital_cost]  # Start with negative capital cost
+        annual_cashflows = [-total_capital_cost]  # Year 0 is just the capital cost
+        cumulative_cashflow = [-total_capital_cost]
         
         # Calculate annual savings with degradation and price escalation
         current_energy = annual_energy
@@ -189,7 +189,7 @@ def calculate_financial_metrics(
             
             # Calculate net cashflow (savings minus maintenance)
             net_cashflow = year_savings - maintenance_cost
-            cashflows.append(float(net_cashflow))
+            annual_cashflows.append(float(net_cashflow))
             
             # Update cumulative cashflow
             cumulative_cashflow.append(float(cumulative_cashflow[-1] + net_cashflow))
@@ -200,7 +200,7 @@ def calculate_financial_metrics(
         
         # Calculate NPV
         npv = -total_capital_cost  # Start with negative capital cost
-        for i, cashflow in enumerate(cashflows, 1):
+        for i, cashflow in enumerate(annual_cashflows[1:], 1):  # Skip year 0 as it's already included
             npv += cashflow / ((1 + interest_rate/100) ** i)
         
         # Calculate simple payback period
@@ -230,7 +230,8 @@ def calculate_financial_metrics(
             'lcoe': float(lcoe),
             'npv': float(npv),
             'co2_savings': float(co2_savings),
-            'cashflow': [float(x) for x in cumulative_cashflow]
+            'annual_cashflows': [float(x) for x in annual_cashflows],
+            'cumulative_cashflow': [float(x) for x in cumulative_cashflow]
         }
         
     except Exception as e:
@@ -241,7 +242,8 @@ def calculate_financial_metrics(
             'lcoe': float('inf'),
             'npv': 0.0,
             'co2_savings': 0.0,
-            'cashflow': [0.0]
+            'annual_cashflows': [0.0],
+            'cumulative_cashflow': [0.0]
         }
 
 class ASHRAE_VERSION(Enum):
@@ -498,13 +500,13 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
         mc.run_model(wdf)
         print("ModelChain run completed")
 
-        ac_filled = mc.results.ac.fillna(0)
+        ac_filled = mc.results.ac.fillna(0)*num_inverters
         if isinstance(ac_filled, pd.DataFrame):
             ac_annual_series = ac_filled.sum(axis=1)
         else:
             ac_annual_series = ac_filled
 
-        dc_filled = mc.results.dc.fillna(0)
+        dc_filled = mc.results.dc.fillna(0)*num_inverters
         if isinstance(dc_filled, pd.DataFrame):
             dc_annual_series = dc_filled.sum(axis=1)
         else:
@@ -947,7 +949,7 @@ def calculate():
                 'lcoe': financial_metrics['lcoe'],
                 'npv': financial_metrics['npv'],
                 'payback_period': financial_metrics['payback_period'],
-                'cashflow': financial_metrics['cashflow'],
+                'cashflow': financial_metrics['cumulative_cashflow'],
                 'annual_savings': financial_metrics['annual_savings'],
                 'co2_savings': financial_metrics['co2_savings']
             }
