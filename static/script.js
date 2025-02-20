@@ -1421,7 +1421,10 @@ function updateResults(systemAnalysis) {
 
     // ---------- MIDDLE DASHBOARD ----------
     $('#total-savings25').text(symbol + (systemAnalysis.results.annual_savings * 25).toFixed(0));
-    $('#system-size-display').text(systemAnalysis.results.system_size.toFixed(1) + ' kW');
+    const systemSizeDisplay = document.getElementById('system-size-display');
+    if (systemSizeDisplay) {
+        systemSizeDisplay.textContent = systemAnalysis.results.actual_system_size_kw.toFixed(2) + ' kW';
+    }
     $('#dashboard-lcoe').text(symbol + systemAnalysis.results.lcoe.toFixed(2) + '/kWh');
     $('#system-area').text(systemAnalysis.results.total_module_area.toFixed(1) + ' m²');
 
@@ -1466,12 +1469,12 @@ function updateResults(systemAnalysis) {
     $('#payback-value').text(systemAnalysis.results.payback_period.toFixed(1) + ' years');
     
     // Update system size display
-    const desiredSystemSize = document.getElementById('desired-system-size');
-    const actualSystemSize = document.getElementById('actual-system-size');
-    if (desiredSystemSize && actualSystemSize) {
-        desiredSystemSize.textContent = systemAnalysis.inputs.system_size.toFixed(2) + ' kW';
-        actualSystemSize.textContent = systemAnalysis.results.actual_system_size_kw.toFixed(2) + ' kW';
-    }
+    //const desiredSystemSize = document.getElementById('desired-system-size');
+    //const actualSystemSize = document.getElementById('actual-system-size');
+    //if (desiredSystemSize && actualSystemSize) {
+    //    desiredSystemSize.textContent = systemAnalysis.inputs.system_size.toFixed(2) + ' kW';
+    //    actualSystemSize.textContent = systemAnalysis.results.actual_system_size_kw.toFixed(2) + ' kW';
+    //}
 
     // Update cost breakdown chart
     if (costBreakdownChart) {
