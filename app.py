@@ -544,7 +544,7 @@ def calculate_pv_output(latitude, longitude, system_size_kw, module_name,
             'modules_per_string': modules_per_string,
             'strings_per_inverter': max_parallel_strings,
             'number_of_inverters': num_inverters,
-            'actual_system_size_kw': float(system_size_kw),
+            'actual_system_size_kw': float(actual_system_size_kw),
             'dc_ac_ratio': float(dc_ac_ratio),
             'module_type': module_name,
             'inverter_type': inverter_name,
@@ -662,7 +662,7 @@ def check_sizing_compatibility(module_name, inverter_name, system_size_kw):
         imp = max(float(module.get('Impo', 0)), 0.1)  # Minimum 0.1A
         voc = max(float(module.get('Voco', 0)), 0.1)  # Minimum 0.1V
         isc = max(float(module.get('Isco', 0)), 0.1)  # Minimum 0.1A
-        m
+        
         module_power_w = vmp*imp
 
         # Inverter characteristics with safety checks
