@@ -1072,10 +1072,10 @@ def get_weather_data_route():
     try:
         lat = float(request.args.get('latitude',23.8103))
         lon = float(request.args.get('longitude',90.4125))
-        email = request.args.get('email','atiqureee@gmail.com')
-        api_key = request.args.get('api_key','DEMO_KEY')
+        #email = request.args.get('email','atiqureee@gmail.com')
+        #api_key = request.args.get('api_key','DEMO_KEY')
 
-        df, meta = get_psm3_data(lat, lon, api_key, email)
+        df, meta = get_psm3_data(lat, lon, NREL_API_KEY, Email)
         monthly_ghi = df['ghi'].resample('M').mean()
         monthly_temp = df['air_temperature'].resample('M').mean()
         return jsonify({
@@ -1087,9 +1087,9 @@ def get_weather_data_route():
     except Exception as e:
         return jsonify({'success':False,'error':str(e)})
 
-@app.route('/get_api_config')
-def get_api_config():
-    return jsonify({'success':True,'api_key':NREL_API_KEY,'email':EMAIL})
+#@app.route('/get_api_config')
+#def get_api_config():
+#    return jsonify({'success':True,'api_key':NREL_API_KEY,'email':EMAIL})
 
 
 
